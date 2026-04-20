@@ -120,11 +120,10 @@ ob_start();
       <div class="form-group">
         <label>Salle</label>
         <select name="room_id" required>
-          <option value="">— Choisir —</option>
           <?php foreach ($rooms as $r): ?>
           <option value="<?= $r['id'] ?>"><?= htmlspecialchars($r['name']) ?></option>
           <?php endforeach; ?>
-        </select>
+        </select>        
       </div>
       <div class="form-group">
         <label>Nom du plan</label>
@@ -213,7 +212,7 @@ function createPlan(e) {
       name: fd.get('name') || 'Plan par défaut',
     })
   }).then(r => r.json()).then(d => {
-    if (d.ok) location.reload();
+    if (d.ok) window.location = '/classes/' + CLASS_ID + '?tab=plans';
     else alert('Erreur : ' + (d.error ?? JSON.stringify(d)));
   });
 }
@@ -223,6 +222,15 @@ function deletePlan(id) {
   fetch('/api/plans/' + id, { method: 'DELETE' })
     .then(r => r.json()).then(d => { if (d.ok) location.reload(); });
 }
+
+(function() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('tab') === 'plans') {
+    const btn = document.querySelector('.tab:nth-child(2)');
+    if (btn) showTab('plans', btn);
+  }
+})();
+
 </script>
 <?php
 $content = ob_get_clean();
