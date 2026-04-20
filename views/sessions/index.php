@@ -94,7 +94,7 @@
 <?php endif; ?>
 
 <!-- Modale nouvelle séance manuelle -->
-<div id="newSessionModal" hidden style="position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:999;">
+<div id="newSessionModal" hidden style="position:fixed;inset:0;background:rgba(0,0,0,.4);align-items:center;justify-content:center;z-index:999;">
     <div class="card" style="min-width:340px;max-width:480px;width:100%;position:relative;">
         <h2>Nouvelle séance</h2>
         <button onclick="document.getElementById('newSessionModal').hidden=true"

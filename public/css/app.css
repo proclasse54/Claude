@@ -388,6 +388,10 @@ body {
   resize: vertical;
 }
 
+.modal-overlay[hidden] {
+    display: none !important;
+}
+
 /* ── Import instructions ──────────────────────────────────── */
 .import-instructions {
   background: var(--primary-light);

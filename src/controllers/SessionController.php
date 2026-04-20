@@ -6,7 +6,7 @@ require_once __DIR__ . '/../Response.php';
 
 class SessionController
 {
-    public function index(): void
+    /*public function index(): void
     {
         $db = Database::get();
 
@@ -37,6 +37,45 @@ class SessionController
         ")->fetchAll();
 
         require __DIR__ . '/../../views/sessions/index.php';
+    }*/
+        
+    public function index(): void
+    {
+        $db = Database::get();
+
+        // Pagination : 100 séances par page, triées par date décroissante
+        $page    = max(1, (int)($_GET['page'] ?? 1));
+        $perPage = 100;
+        $offset  = ($page - 1) * $perPage;
+
+        $sessions = $db->query("
+            SELECT se.*, sp.name as plan_name, c.name as class_name, r.name as room_name
+            FROM sessions se
+            JOIN seating_plans sp ON sp.id = se.plan_id
+            JOIN classes c ON c.id = sp.class_id
+            JOIN rooms r ON r.id = sp.room_id
+            ORDER BY se.date DESC, se.time_start DESC, se.created_at DESC
+            LIMIT $perPage OFFSET $offset
+        ")->fetchAll();
+
+        $total      = (int)$db->query("SELECT COUNT(*) FROM sessions")->fetchColumn();
+        $totalPages = (int)ceil($total / $perPage);
+
+        $plans = $db->query("
+            SELECT sp.*, c.name as class_name, r.name as room_name
+            FROM seating_plans sp
+            JOIN classes c ON c.id = sp.class_id
+            JOIN rooms r ON r.id = sp.room_id
+            ORDER BY c.name
+        ")->fetchAll();
+
+        $pageTitle = 'Séances';
+
+        ob_start();
+        require __DIR__ . '/../../views/sessions/index.php';
+        $content = ob_get_clean();
+
+        require __DIR__ . '/../../views/layouts/app.php';
     }
 
     public function live(array $p): void
