@@ -76,9 +76,6 @@ $router->add('DELETE', '/api/tags/{id}',                                    fn($
 // Racine
 $router->add('GET', '/', fn() => Response::redirect('/sessions'));
 
-// Import ICS
-$router->add('POST', '/api/sessions/import-ics', function() {    (new IcsImportController())->apiImportIcs();});
-
 // ── Dispatch ──────────────────────────────────────────────────
 $method = $_SERVER['REQUEST_METHOD'];
 $uri    = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
