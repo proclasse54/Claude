@@ -35,34 +35,16 @@ class SessionController {
         $session = $stmt->fetch();
         if (!$session) { http_response_code(404); return; }
 
-        // seats + assignments + observations
-        $stmt2 = $db->prepare("
+        $stmt4 = $db->prepare("
             SELECT s.*, sa.student_id, st.last_name, st.first_name
             FROM seats s
-            LEFT JOIN seating_assignments sa ON sa.seat_id = s.id AND sa.plan_id = (SELECT id FROM seating_plans WHERE room_id=s.room_id AND class_id=? ORDER BY id LIMIT 1)
-            LEFT JOIN students st ON st.id = sa.student_id
-            WHERE s.room_id = ?
+            LEFT JOIN seating_assignments sa ON sa.seat_id=s.id AND sa.plan_id=?
+            LEFT JOIN students st ON st.id=sa.student_id
+            WHERE s.room_id=?
             ORDER BY s.row_index, s.col_index
         ");
-        $stmt2->execute([$session['class_id'], $session['room_id']]);
-        $seats = $stmt2->fetchAll();
-
-        // Load plan_id properly
-        $stmt3 = $db->prepare("SELECT id FROM seating_plans WHERE class_id=? AND room_id=? ORDER BY id LIMIT 1");
-        $stmt3->execute([$session['class_id'], $session['room_id']]);
-        $plan = $stmt3->fetch();
-        if ($plan) {
-            $stmt4 = $db->prepare("
-                SELECT s.*, sa.student_id, st.last_name, st.first_name
-                FROM seats s
-                LEFT JOIN seating_assignments sa ON sa.seat_id=s.id AND sa.plan_id=?
-                LEFT JOIN students st ON st.id=sa.student_id
-                WHERE s.room_id=?
-                ORDER BY s.row_index, s.col_index
-            ");
-            $stmt4->execute([$session['plan_id'], $session['room_id']]);
-            $seats = $stmt4->fetchAll();
-        }
+        $stmt4->execute([$session['plan_id'], $session['room_id']]);
+        $seats = $stmt4->fetchAll();
 
         $tags = $db->query("SELECT * FROM tags ORDER BY sort_order")->fetchAll();
         $stmt5 = $db->prepare("SELECT * FROM observations WHERE session_id=?");
