@@ -52,6 +52,7 @@ class ClassController {
         $plan = $stmt->fetch();
         if (!$plan) { http_response_code(404); return; }
 
+        /* requête $stmt2 inutile (résultat écrasé)
         $stmt2 = $db->prepare("
             SELECT s.*, sa.student_id, st.first_name, st.last_name
             FROM seats s
@@ -62,11 +63,11 @@ class ClassController {
         ");
         $stmt2->execute([$planId, $plan['room_id']]);
         $seats = $stmt2->fetchAll();
+        */
 
         $stmt3 = $db->prepare("SELECT id, first_name, last_name FROM students WHERE class_id=? ORDER BY last_name, first_name");
         $stmt3->execute([$plan['class_id']]);
         $students = $stmt3->fetchAll();
-
         $stmt4 = $db->prepare("
             SELECT sa.seat_id, sa.student_id, st.first_name, st.last_name
             FROM seating_assignments sa
