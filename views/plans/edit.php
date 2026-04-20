@@ -2,10 +2,15 @@
 $pageTitle = 'Plan : ' . $plan['name'] . ' — ProClasse';
 
 // Grille des sièges
+$seatMap = [];
+foreach ($seats as $s) { $seatMap[$s['row_index']][$s['col_index']] = $s; }
+
 $grid = [];
-foreach ($seats as $s) { $grid[$s['row_index']][$s['col_index']] = $s; }
-ksort($grid);
-foreach ($grid as &$row) ksort($row);
+for ($r = 0; $r < $room['rows']; $r++) {
+    for ($c = 0; $c < $room['cols']; $c++) {
+        $grid[$r][$c] = $seatMap[$r][$c] ?? null;
+    }
+}
 
 // Index des affectations existantes : seat_id → student
 $assignMap = [];
@@ -26,22 +31,28 @@ ob_start();
   <!-- Grille salle -->
   <div class="plan-room-wrap">
     <div class="room-label-top">Tableau / Bureau</div>
-    <div class="plan-room" id="planRoom" style="--room-cols: <?= $room['cols'] ?>">
-      <?php foreach ($grid as $rowIdx => $cols): ?>
-        <?php foreach ($cols as $colIdx => $seat): ?>
-        <?php $assigned = $assignMap[$seat['id']] ?? null; ?>
-        <div class="plan-seat <?= $assigned ? 'assigned' : 'free' ?>"
-             data-seat-id="<?= $seat['id'] ?>"
-             onclick="selectSeat(<?= $seat['id'] ?>)">
-          <?php if ($assigned): ?>
-            <span class="plan-seat-name"><?= htmlspecialchars($assigned['first_name']) ?><br><small><?= htmlspecialchars($assigned['last_name']) ?></small></span>
-          <?php else: ?>
-            <span class="plan-seat-empty"><?= chr(65 + $rowIdx) . ($colIdx + 1) ?></span>
-          <?php endif; ?>
-        </div>
+      <div class="plan-room" id="planRoom" style="--room-cols: <?= $room['cols'] ?>">
+        <?php foreach ($grid as $rowIdx => $cols): ?>
+          <?php foreach ($cols as $colIdx => $seat): ?>
+
+            <?php if ($seat === null): ?>
+              <div class="plan-seat inactive"></div>  <!-- allée / espace vide -->
+            <?php else: ?>
+              <?php $assigned = $assignMap[$seat['id']] ?? null; ?>
+              <div class="plan-seat <?= $assigned ? 'assigned' : 'free' ?>"
+                  data-seat-id="<?= $seat['id'] ?>"
+                  onclick="selectSeat(<?= $seat['id'] ?>)">
+                <?php if ($assigned): ?>
+                  <span class="plan-seat-name"><?= htmlspecialchars($assigned['first_name']) ?><br><small><?= htmlspecialchars($assigned['last_name']) ?></small></span>
+                <?php else: ?>
+                  <span class="plan-seat-empty"><?= chr(65 + $rowIdx) . ($colIdx + 1) ?></span>
+                <?php endif; ?>
+              </div>
+            <?php endif; ?>
+
+          <?php endforeach; ?>
         <?php endforeach; ?>
-      <?php endforeach; ?>
-    </div>
+      </div>
   </div>
 
   <!-- Liste élèves -->
