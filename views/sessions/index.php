@@ -84,13 +84,39 @@ function openNewSessionModal() {
 function createSession(e) {
   e.preventDefault();
   const fd = new FormData(e.target);
+
+  // Construire le payload en forçant plan_id en entier
+  const payload = {
+    plan_id: parseInt(fd.get('plan_id'), 10),
+    date:    fd.get('date'),
+    subject: fd.get('subject') || null,
+  };
+
+  // Validation côté client
+  if (!payload.plan_id || !payload.date) {
+    alert('Veuillez sélectionner une classe/salle et une date.');
+    return;
+  }
+
   fetch('/api/sessions', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify(Object.fromEntries(fd))
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(payload),
   })
-  .then(r => r.json())
-  .then(d => { if (d.ok) window.location = '/sessions/' + d.id + '/live'; });
+  .then(r => {
+    if (!r.ok) throw new Error('Erreur serveur : ' + r.status);
+    return r.json();
+  })
+  .then(d => {
+    if (d.ok) {
+      window.location = '/sessions/' + d.id + '/live';
+    } else {
+      alert('Erreur : ' + (d.error ?? 'inconnue'));
+    }
+  })
+  .catch(err => {
+    alert('Impossible de créer la séance. ' + err.message);
+  });
 }
 </script>
 <?php
