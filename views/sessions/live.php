@@ -61,6 +61,7 @@ ob_start();
       <?php foreach ($tags as $t): ?>
       <button class="tag-btn" style="--tag-color:<?= $t['color'] ?>"
               data-tag="<?= htmlspecialchars($t['label']) ?>"
+              data-icon="<?= htmlspecialchars($t['icon'] ?? '') ?>"
               onclick="selectTag('<?= htmlspecialchars(addslashes($t['label'])) ?>')">
         <?= $t['icon'] ?? '' ?> <?= htmlspecialchars($t['label']) ?>
       </button>
@@ -90,12 +91,12 @@ function openTagMenu(seatId, studentId, name) {
   document.getElementById('selectedStudent').hidden = false;
 }
 
-// ✅ CORRECTION — passer la couleur lors de l'ajout
+// ✅ selectTag — récupérer aussi l'icône
 function selectTag(tag) {
   if (!currentStudentId) return;
-  // Récupérer la couleur depuis le bouton tag
   const tagBtn = document.querySelector(`.tag-btn[data-tag="${tag}"]`);
   const color  = tagBtn ? getComputedStyle(tagBtn).getPropertyValue('--tag-color').trim() : '#888';
+  const icon   = tagBtn ? (tagBtn.dataset.icon ?? '') : ''; // ← ajouter cette ligne
 
   fetch(`/api/sessions/${SESSION_ID}/observations`, {
     method: 'POST',
@@ -104,18 +105,19 @@ function selectTag(tag) {
   })
   .then(r => r.json())
   .then(d => {
-    if (d.ok) addTagChip(currentStudentId, d.obs_id, tag, color); // ← passer color
+    if (d.ok) addTagChip(currentStudentId, d.obs_id, tag, color, icon); // ← passer icon
   });
 }
 
-function addTagChip(studentId, obsId, tag, color = '#888') {
+// ✅ addTagChip — afficher l'emoji + le label
+function addTagChip(studentId, obsId, tag, color = '#888', icon = '') {
   const container = document.getElementById('tags-' + studentId);
   if (!container) return;
   const span = document.createElement('span');
   span.className = 'tag-chip';
-  span.style.background = color; // ← appliquer la couleur
+  span.style.background = color;
   span.title = 'Retirer';
-  span.textContent = tag;
+  span.textContent = (icon ? icon + ' ' : '') + tag; // ← afficher emoji + label
   span.onclick = (e) => { e.stopPropagation(); removeObs(obsId, studentId); span.remove(); };
   container.appendChild(span);
 }
