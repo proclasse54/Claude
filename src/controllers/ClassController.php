@@ -175,6 +175,7 @@ class ClassController {
         // Simuler un fichier temporaire pour réutiliser PronoteImportController
         $tmp = tempnam(sys_get_temp_dir(), 'pronote_');
         register_shutdown_function('unlink', $tmp);
+
         // Encoder en UTF-8 (le texte collé depuis Pronote Windows peut être CP1252)
         if (!mb_check_encoding($raw, 'UTF-8')) {
             $raw = mb_convert_encoding($raw, 'UTF-8', 'Windows-1252');
@@ -190,6 +191,5 @@ class ClassController {
 
         require_once __DIR__ . '/PronoteImportController.php';
         (new PronoteImportController)->import($p);
-        unlink($tmp);
     }
 }
