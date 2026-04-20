@@ -1,123 +1,207 @@
 <?php
-$pageTitle = 'Séances — ProClasse';
-ob_start();
+/**
+ * views/sessions/index.php
+ * Variables disponibles : $sessions, $plans, $page, $totalPages, $total
+ */
 ?>
-<div class="page-header">
-  <div>
-    <h1>Séances</h1>
-    <p class="text-muted">Historique et démarrage d'une nouvelle séance</p>
-  </div>
-  <button class="btn btn-primary" onclick="openNewSessionModal()">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-    Nouvelle séance
-  </button>
-</div>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Séances – ProClasse</title>
+</head>
+<body>
 
+<h1>Séances</h1>
+
+<!-- Import ICS Pronote -->
+<section class="card" style="margin-bottom:1.5rem;">
+    <h2>📅 Importer depuis Pronote (ICS)</h2>
+    <p style="color:var(--color-text-muted);margin-bottom:1rem;">
+        Exporte ton EDT depuis Pronote → <em>Mon EDT → Exporter → Calendrier (.ics)</em>, puis dépose le fichier ici.
+    </p>
+    <form id="icsForm" enctype="multipart/form-data">
+        <label for="icsFile">Fichier <code>.ics</code></label>
+        <input type="file" id="icsFile" name="icsfile" accept=".ics" required>
+        <button type="submit" class="btn btn-primary">Importer les séances</button>
+    </form>
+    <div id="icsResult" style="margin-top:.75rem;"></div>
+</section>
+
+<!-- Bouton nouvelle séance manuelle -->
+<button class="btn btn-primary" onclick="openNewSessionModal()">Nouvelle séance</button>
+
+<!-- Liste des séances -->
 <?php if (empty($sessions)): ?>
-<div class="empty-state">
-  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-  <h3>Aucune séance</h3>
-  <p>Créez votre première séance en cliquant sur le bouton ci-dessus.<br>Vous aurez besoin d'une salle et d'une classe configurée.</p>
-</div>
-<?php else: ?>
-<div class="sessions-list">
-  <?php foreach ($sessions as $s): ?>
-  <div class="session-card">
-    <div class="session-card-left">
-      <div class="session-date"><?= date('d/m/Y', strtotime($s['date'])) ?></div>
-      <div class="session-meta">
-        <strong><?= htmlspecialchars($s['class_name']) ?></strong>
-        <span>·</span>
-        <span><?= htmlspecialchars($s['room_name']) ?></span>
-        <?php if ($s['subject']): ?>
-        <span>·</span>
-        <span class="badge"><?= htmlspecialchars($s['subject']) ?></span>
-        <?php endif; ?>
-      </div>
+    <div class="card" style="margin-top:1.5rem;">
+        <h3>Aucune séance</h3>
+        <p>Créez votre première séance ou importez votre EDT Pronote ci-dessus.</p>
     </div>
-    <a href="/sessions/<?= $s['id'] ?>/live" class="btn btn-sm btn-primary">Ouvrir</a>
-  </div>
-  <?php endforeach; ?>
-</div>
+<?php else: ?>
+    <p style="margin:.75rem 0;color:var(--color-text-muted);">
+        <?= $total ?> séance(s) au total — page <?= $page ?>/<?= $totalPages ?>
+    </p>
+    <table>
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Heure</th>
+                <th>Classe</th>
+                <th>Matière</th>
+                <th>Plan / Salle</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        <?php foreach ($sessions as $s): ?>
+            <tr>
+                <td><?= htmlspecialchars($s['date']) ?></td>
+                <td>
+                    <?php if (!empty($s['time_start'])): ?>
+                        <?= substr($s['time_start'], 0, 5) ?>
+                        <?= !empty($s['time_end']) ? ' → ' . substr($s['time_end'], 0, 5) : '' ?>
+                    <?php else: ?>
+                        –
+                    <?php endif; ?>
+                </td>
+                <td><?= htmlspecialchars($s['class_name']) ?></td>
+                <td><?= htmlspecialchars($s['subject'] ?? '–') ?></td>
+                <td>
+                    <?= htmlspecialchars($s['plan_name']) ?>
+                    <small style="color:var(--color-text-muted)">(<?= htmlspecialchars($s['room_name']) ?>)</small>
+                </td>
+                <td>
+                    <a href="/sessions/<?= $s['id'] ?>/live" class="btn btn-sm">Ouvrir</a>
+                    <button class="btn btn-sm" onclick="deleteSession(<?= $s['id'] ?>)">Supprimer</button>
+                </td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody>
+    </table>
+
+    <!-- Pagination -->
+    <?php if ($totalPages > 1): ?>
+    <nav style="margin-top:1rem;display:flex;gap:.5rem;align-items:center;">
+        <?php if ($page > 1): ?>
+            <a href="?page=<?= $page - 1 ?>" class="btn">← Précédent</a>
+        <?php endif; ?>
+        <span>Page <?= $page ?> / <?= $totalPages ?></span>
+        <?php if ($page < $totalPages): ?>
+            <a href="?page=<?= $page + 1 ?>" class="btn">Suivant →</a>
+        <?php endif; ?>
+    </nav>
+    <?php endif; ?>
 <?php endif; ?>
 
-<!-- Modal nouvelle séance -->
-<div class="modal-overlay" id="newSessionModal" hidden>
-  <div class="modal">
-    <div class="modal-header">
-      <h2>Nouvelle séance</h2>
-      <button class="modal-close" onclick="closeModal('newSessionModal')">&times;</button>
+<!-- Modale nouvelle séance manuelle -->
+<div id="newSessionModal" hidden style="position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:999;">
+    <div class="card" style="min-width:340px;max-width:480px;width:100%;position:relative;">
+        <h2>Nouvelle séance</h2>
+        <button onclick="document.getElementById('newSessionModal').hidden=true"
+                style="position:absolute;top:1rem;right:1rem;font-size:1.25rem;">×</button>
+        <form onsubmit="createSession(event)">
+            <label>Date
+                <input type="date" name="date" required value="<?= date('Y-m-d') ?>">
+            </label>
+            <label>Heure de début
+                <input type="time" name="time_start">
+            </label>
+            <label>Heure de fin
+                <input type="time" name="time_end">
+            </label>
+            <label>Classe / Salle
+                <select name="plan_id" required>
+                    <option value="">— Choisir —</option>
+                    <?php foreach ($plans as $pl): ?>
+                        <option value="<?= $pl['id'] ?>">
+                            <?= htmlspecialchars($pl['class_name'] . ' – ' . $pl['room_name'] . ' (' . $pl['name'] . ')') ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </label>
+            <label>Matière <small>(optionnel)</small>
+                <input type="text" name="subject" placeholder="ex: Mathématiques">
+            </label>
+            <?php if (empty($plans)): ?>
+                <p style="color:var(--color-warning);">
+                    ⚠️ Aucun plan configuré. Créez d'abord une salle, une classe, et assignez-les.
+                </p>
+            <?php endif; ?>
+            <div style="display:flex;gap:.75rem;margin-top:1rem;">
+                <button type="button" class="btn"
+                        onclick="document.getElementById('newSessionModal').hidden=true">Annuler</button>
+                <button type="submit" class="btn btn-primary">Démarrer</button>
+            </div>
+        </form>
     </div>
-    <form id="newSessionForm" onsubmit="createSession(event)">
-      <div class="form-group">
-        <label for="sessionDate">Date</label>
-        <input type="date" id="sessionDate" name="date" required value="<?= date('Y-m-d') ?>">
-      </div>
-      <div class="form-group">
-        <label for="sessionPlan">Classe / Salle</label>
-        <select id="sessionPlan" name="plan_id" required>
-          <option value="">— Choisir —</option>
-          <?php foreach ($plans as $pl): ?>
-          <option value="<?= $pl['id'] ?>"><?= htmlspecialchars($pl['class_name'] . ' — ' . $pl['room_name'] . ' (' . $pl['name'] . ')') ?></option>
-          <?php endforeach; ?>
-        </select>
-      </div>
-      <div class="form-group">
-        <label for="sessionSubject">Matière <span class="text-muted">(optionnel)</span></label>
-        <input type="text" id="sessionSubject" name="subject" placeholder="ex: Mathématiques">
-      </div>
-      <?php if (empty($plans)): ?>
-      <p class="form-hint error">⚠️ Aucun plan de classe configuré. Créez d'abord une salle, une classe, et assignez-les.</p>
-      <?php endif; ?>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-ghost" onclick="closeModal('newSessionModal')">Annuler</button>
-        <button type="submit" class="btn btn-primary" <?= empty($plans) ? 'disabled' : '' ?>>Démarrer</button>
-      </div>
-    </form>
-  </div>
 </div>
 
 <script>
 function openNewSessionModal() {
-  document.getElementById('newSessionModal').hidden = false;
+    document.getElementById('newSessionModal').hidden = false;
 }
+
 function createSession(e) {
-  e.preventDefault();
-  const fd = new FormData(e.target);
-
-  // Construire le payload en forçant plan_id en entier
-  const payload = {
-    plan_id: parseInt(fd.get('plan_id'), 10),
-    date:    fd.get('date'),
-    subject: fd.get('subject') || null,
-  };
-
-  // Validation côté client
-  if (!payload.plan_id || !payload.date) {
-    alert('Veuillez sélectionner une classe/salle et une date.');
-    return;
-  }
-
-  fetch('/api/sessions', {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify(payload),
-  })
-  .then(r => {
-    return r.json().then(d => ({ ok: r.ok, status: r.status, data: d }));
-  })
-  .then(({ ok, status, data }) => {
-    if (ok && data.ok) {
-      window.location = '/sessions/' + data.id + '/live';
-    } else {
-      alert('Erreur ' + status + ' : ' + (data.error ?? JSON.stringify(data)));
-    }
-  })
-  .catch(err => {
-    alert('Impossible de créer la séance. ' + err.message);
-  });
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            plan_id:    parseInt(fd.get('plan_id'), 10),
+            date:       fd.get('date'),
+            time_start: fd.get('time_start') || null,
+            time_end:   fd.get('time_end')   || null,
+            subject:    fd.get('subject')    || null,
+        }),
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.ok) window.location = '/sessions/' + d.id + '/live';
+        else alert('Erreur : ' + (d.error ?? JSON.stringify(d)));
+    });
 }
+
+function deleteSession(id) {
+    if (!confirm('Supprimer cette séance et toutes ses observations ?')) return;
+    fetch('/api/sessions/' + id, { method: 'DELETE' })
+        .then(r => r.json())
+        .then(d => { if (d.ok) location.reload(); });
+}
+
+// Import ICS
+document.getElementById('icsForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = this.querySelector('button[type=submit]');
+    btn.disabled = true;
+    btn.textContent = 'Import en cours…';
+
+    const data = await fetch('/api/sessions/import-ics', {
+        method: 'POST',
+        body: new FormData(this),
+    }).then(r => r.json());
+
+    const el = document.getElementById('icsResult');
+    if (data.ok) {
+        let html = `<span style="color:var(--color-success,green)">
+            ✅ ${data.inserted} séance(s) créée(s)
+            ${data.plans_created ? ` · ${data.plans_created} plan(s) généré(s) automatiquement` : ''}
+            · ${data.skipped} ignorée(s) (doublons)
+        </span>`;
+        if (data.errors?.length) {
+            html += '<br><details><summary>⚠️ ' + data.errors.length + ' avertissement(s)</summary>'
+                  + data.errors.map(e => `<div>• ${e}</div>`).join('') + '</details>';
+        }
+        el.innerHTML = html;
+        setTimeout(() => location.reload(), 2000);
+    } else {
+        el.innerHTML = `<span style="color:var(--color-error,red)">❌ ${data.error}</span>`;
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Importer les séances';
+});
 </script>
-<?php
-$content = ob_get_clean();
-require __DIR__ . '/../layouts/app.php';
+
+</body>
+</html>

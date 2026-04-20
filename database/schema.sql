@@ -204,3 +204,17 @@ CREATE TABLE IF NOT EXISTS tags (
     sort_order TINYINT      NOT NULL DEFAULT 99,
     UNIQUE KEY uq_tag_label (label)
 ) ENGINE=InnoDB;
+-- ============================================================
+-- Migration : ajout de time_start et time_end dans sessions
+-- À exécuter UNE SEULE FOIS sur la base proclasse
+-- ============================================================
+
+USE proclasse;
+
+ALTER TABLE sessions
+    ADD COLUMN IF NOT EXISTS time_start TIME NULL AFTER `date`,
+    ADD COLUMN IF NOT EXISTS time_end   TIME NULL AFTER time_start;
+
+-- Index pour accélérer la déduplication lors de l'import ICS
+CREATE INDEX IF NOT EXISTS idx_sessions_plan_date_time
+    ON sessions (plan_id, `date`, time_start);

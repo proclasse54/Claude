@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-
+require_once __DIR__ . '/../src/controllers/IcsImportController.php';
 define('ROOT', dirname(__DIR__));
 
 // ── Config ────────────────────────────────────────────────────
@@ -64,6 +64,7 @@ $router->add('DELETE', '/api/plans/{plan_id}',              fn($p)=> (new ClassC
 $router->add('GET',    '/sessions',                                         fn()  => (new SessionController)->index());
 $router->add('GET',    '/sessions/{id}/live',                               fn($p)=> (new SessionController)->live($p));
 $router->add('POST',   '/api/sessions',                                     fn()  => (new SessionController)->apiCreate());
+$router->add('POST',   '/api/sessions/import-ics',                          fn()  => (new IcsImportController)->apiImportIcs());
 $router->add('DELETE', '/api/sessions/{id}',                                fn($p)=> (new SessionController)->apiDelete($p));
 $router->add('GET',    '/api/sessions/{id}/observations',                   fn($p)=> (new SessionController)->apiGetObservations($p));
 $router->add('POST',   '/api/sessions/{id}/observations',                   fn($p)=> (new SessionController)->apiAddObservation($p));
@@ -74,6 +75,9 @@ $router->add('DELETE', '/api/tags/{id}',                                    fn($
 
 // Racine
 $router->add('GET', '/', fn() => Response::redirect('/sessions'));
+
+// Import ICS
+$router->add('POST', '/api/sessions/import-ics', function() {    (new IcsImportController())->apiImportIcs();});
 
 // ── Dispatch ──────────────────────────────────────────────────
 $method = $_SERVER['REQUEST_METHOD'];
