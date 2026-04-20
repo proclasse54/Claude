@@ -95,12 +95,24 @@ function selectTag(tag) {
   fetch(`/api/sessions/${SESSION_ID}/observations`, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({student_id: currentStudentId, tag: tag})
+    body: JSON.stringify({ student_id: currentStudentId, tag: tag })
   })
   .then(r => r.json())
   .then(d => {
-    if (d.ok) refreshTags(currentStudentId);
+    if (d.ok) addTagChip(currentStudentId, d.obs_id, tag);
   });
+}
+
+// Ajouter le chip directement sans rechargement réseau
+function addTagChip(studentId, obsId, tag) {
+  const container = document.getElementById('tags-' + studentId);
+  if (!container) return;
+  const span = document.createElement('span');
+  span.className = 'tag-chip';
+  span.title = 'Retirer';
+  span.textContent = tag;
+  span.onclick = (e) => { e.stopPropagation(); removeObs(obsId, studentId); span.remove(); };
+  container.appendChild(span);
 }
 
 function removeObs(obsId, studentId) {
