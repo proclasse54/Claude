@@ -47,13 +47,13 @@ $router->add('DELETE', '/api/rooms/{id}',       fn($p)=> (new RoomController)->a
 $router->add('GET',    '/classes',                          fn()  => (new ClassController)->index());
 $router->add('GET',    '/classes/{id}',                     fn($p)=> (new ClassController)->show($p));
 $router->add('POST',   '/api/classes',                      fn()  => (new ClassController)->apiSaveClass([]));
+$router->add('DELETE', '/api/classes',                      fn()  => (new ClassController)->apiDeleteAllClasses());
 $router->add('POST',   '/api/classes/{id}',                 fn($p)=> (new ClassController)->apiSaveClass($p));
 $router->add('DELETE', '/api/classes/{id}',                 fn($p)=> (new ClassController)->apiDeleteClass($p));
 $router->add('POST',   '/api/classes/{id}/import-paste',    fn($p)=> (new ClassController)->apiImportPaste($p));
 $router->add('POST',   '/api/classes/{id}/import',          fn($p)=> (new ClassController)->apiImportStudents($p));
 $router->add('GET',    '/api/classes/{id}/students',        fn($p)=> (new ClassController)->apiGetStudents($p));
 $router->add('POST',   '/api/classes/{id}/plans',           fn($p)=> (new ClassController)->apiSavePlan($p));
-
 // Plans
 $router->add('GET',    '/plans/{plan_id}/edit',             fn($p)=> (new ClassController)->planEdit($p));
 $router->add('GET',    '/api/plans/{plan_id}',              fn($p)=> (new ClassController)->apiGetPlan($p));

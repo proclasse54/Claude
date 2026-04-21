@@ -228,9 +228,10 @@ function deleteSelected() {
 
 function deleteAll() {
   const total = document.querySelectorAll('.class-checkbox').length;
-  if (!confirm('⚠️ Supprimer les ' + total + ' classes ET tous leurs élèves ? Cette action est irréversible.')) return;
-  const ids = Array.from(document.querySelectorAll('.class-checkbox')).map(c => c.value);
-  Promise.all(ids.map(id => fetch('/api/classes/' + id, { method: 'DELETE' }).then(r => r.json())))
-    .then(() => location.reload());
+  if (!confirm('⚠️ Supprimer les ' + total + ' classes, élèves, groupes, plans et séances ?\n\nCette action est irréversible.')) return;
+  fetch('/api/classes', { method: 'DELETE' })
+    .then(r => r.json())
+    .then(d => { if (d.ok) location.reload(); else alert('Erreur : ' + d.error); });
 }
+
 </script>

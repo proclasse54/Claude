@@ -165,6 +165,26 @@ class ClassController {
         }
     }
 
+    public function apiDeleteAllClasses(): void
+    {
+        $db = Database::get();
+        try {
+            $db->exec("SET FOREIGN_KEY_CHECKS = 0");
+            $db->exec("TRUNCATE TABLE seating_assignments");
+            $db->exec("TRUNCATE TABLE seating_plans");
+            $db->exec("TRUNCATE TABLE group_students");
+            $db->exec("TRUNCATE TABLE `groups`");
+            $db->exec("TRUNCATE TABLE students");
+            $db->exec("TRUNCATE TABLE sessions");
+            $db->exec("TRUNCATE TABLE classes");
+            $db->exec("SET FOREIGN_KEY_CHECKS = 1");
+            Response::json(['ok' => true]);
+        } catch (\Throwable $e) {
+            $db->exec("SET FOREIGN_KEY_CHECKS = 1");
+            Response::json(['error' => $e->getMessage()], 500);
+        }
+    }
+
     public function apiImportStudents(array $p): void {
         require_once __DIR__ . '/PronoteImportController.php';
         (new PronoteImportController)->import($p);
