@@ -607,20 +607,20 @@ kbd {
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-/* ── Corps de colonne avec lignes horaires ────────────────── */
-
-
-/* ── Cartes séance ────────────────────────────────────────── */
-
+/* Emoji picker */
+emoji-picker {
+    position: absolute;
+    z-index: 200;
+    top: .25rem;
+    left: 0;
+    --border-radius: var(--radius-md);
+    --background: var(--surface-2);
+    --border-color: var(--border);
+    --input-border-color: var(--border);
+    --button-hover-background: var(--surface-offset);
+    --emoji-size: 1.4rem;
+}
+.emoji-picker-hidden {
+    display: none;
+}
 

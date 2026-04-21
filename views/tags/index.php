@@ -61,8 +61,20 @@
         <input type="text" id="tagLabel" placeholder="ex: Distrait" required>
       </div>
       <div class="form-group">
-        <label>Icône (emoji)</label>
-        <input type="text" id="tagIcon" placeholder="ex: 😴">
+        <div style="margin-bottom:var(--space-4);">
+            <label>Icône (emoji)</label>
+            <div style="display:flex;gap:.5rem;align-items:center;margin-top:.25rem;">
+                <input type="text" id="tagIcon" placeholder="😴" style="width:4rem;text-align:center;font-size:1.4rem;" readonly>
+                <button type="button" id="btnEmojiPicker" class="btn">😊 Choisir</button>
+            </div>
+            <div id="emojiPickerWrapper" style="position:relative;">
+                <emoji-picker
+                    id="emojiPicker"
+                    class="emoji-picker-hidden"
+                    data-source="/js/emoji-data.json"
+                ></emoji-picker>
+            </div>
+        </div>
       </div>
       <div class="form-group">
         <label>Couleur</label>
@@ -139,4 +151,25 @@ function deleteTag(id, label) {
       }
     });
 }
+
+// ── Emoji picker ────────────────────────────────────────────
+const emojiPicker  = document.getElementById('emojiPicker');
+const emojiBtn     = document.getElementById('btnEmojiPicker');
+const tagIconInput = document.getElementById('tagIcon');
+
+emojiBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    emojiPicker.classList.toggle('emoji-picker-hidden');
+});
+
+emojiPicker.addEventListener('emoji-click', (e) => {
+    tagIconInput.value = e.detail.unicode;
+    emojiPicker.classList.add('emoji-picker-hidden');
+});
+
+document.addEventListener('click', (e) => {
+    if (!emojiPicker.contains(e.target) && e.target !== emojiBtn) {
+        emojiPicker.classList.add('emoji-picker-hidden');
+    }
+});
 </script>

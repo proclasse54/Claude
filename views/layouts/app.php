@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?= htmlspecialchars($pageTitle ?? 'ProClasse') ?></title>
 <link rel="stylesheet" href="/css/app.css">
+<script type="module" src="/js/emoji-picker.js"></script>
 </head>
 <body>
 <nav class="sidebar">
