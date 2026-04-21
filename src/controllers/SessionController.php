@@ -22,7 +22,7 @@ class SessionController
             JOIN classes c ON c.id = sp.class_id
             JOIN rooms r ON r.id = sp.room_id
             ORDER BY se.date DESC, se.time_start DESC, se.created_at DESC
-            LIMIT $perPage OFFSET $offset
+            LIMIT ".(int)$perPage." OFFSET ".(int)$offset."
         ")->fetchAll();
 
         $total      = (int)$db->query("SELECT COUNT(*) FROM sessions")->fetchColumn();
