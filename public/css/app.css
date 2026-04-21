@@ -475,9 +475,10 @@ kbd {
 .btn-week-nav { padding:.35rem .8rem; border:1px solid var(--color-border); border-radius:var(--radius-sm); text-decoration:none; color:var(--color-text); background:var(--color-surface); }
 
 /* Grille 5 colonnes */
-.week-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:.5rem; }
-.week-col { background:var(--color-surface); border:1px solid var(--color-border); border-radius:var(--radius-md); min-height:200px; }
-.week-col-header { text-align:center; padding:.5rem; background:var(--color-surface-offset); border-bottom:1px solid var(--color-border); font-weight:600; font-size:var(--text-sm); }
+.week-grid { gap: 0;border: 1px solid var(--color-border);border-radius: var(--radius-md);overflow: hidden;}
+.week-col {border: none;border-right: 1px solid var(--color-border);border-radius: 0;}
+.week-col-header {text-align: left;padding: .4rem .6rem;}
+.week-col:last-child {border-right: none;}
 .week-empty { color:var(--color-text-faint); text-align:center; padding:1rem; }
 
 /* Carte séance */
@@ -489,3 +490,6 @@ kbd {
 .week-card:hover .week-card-time,
 .week-card:hover .week-card-room,
 .week-card:hover .week-card-subject { color:rgba(255,255,255,.8); }
+
+
+
