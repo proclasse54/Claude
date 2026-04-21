@@ -230,28 +230,28 @@ class SessionController
     {
         $db = Database::get();
 
-        // Vérifier si ce tag est utilisé dans des observations
-        $stmtCheck = $db->prepare(
-            "SELECT COUNT(*) FROM observations o
-            JOIN tags t ON t.label = o.tag
-            WHERE t.id = ?"
-        );
-        $stmtCheck->execute([$p['id']]);
-        $count = (int)$stmtCheck->fetchColumn();
+        if (empty($_GET['force'])) {
+            $stmtCheck = $db->prepare(
+                "SELECT COUNT(*) FROM observations o
+                JOIN tags t ON t.label = o.tag
+                WHERE t.id = ?"
+            );
+            $stmtCheck->execute([$p['id']]);
+            $count = (int)$stmtCheck->fetchColumn();
 
-        if ($count > 0) {
-            Response::json([
-                'error' => "Ce tag est utilisé dans $count observation(s) existante(s). Supprimez-les d'abord ou forcez la suppression.",
-                'count' => $count,
-                'can_force' => true,
-            ], 409);
-            return;
+            if ($count > 0) {
+                Response::json([
+                    'error'     => "Ce tag est utilisé dans $count observation(s) existante(s). Supprimez-les d'abord ou forcez la suppression.",
+                    'count'     => $count,
+                    'can_force' => true,
+                ], 409);
+                return;
+            }
         }
 
         $db->prepare("DELETE FROM tags WHERE id = ?")->execute([$p['id']]);
         Response::json(['ok' => true]);
     }
-
 
     public function tagsIndex(): void
     {
