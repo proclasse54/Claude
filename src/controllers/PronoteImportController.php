@@ -225,8 +225,17 @@ class PronoteImportController {
                                 ':name'     => $groupName,
                             ]);
                             $groupId = (int)$db->lastInsertId();
+
+                            // lastInsertId() = 0 si le groupe existait déjà → on le récupère manuellement
+                            if ($groupId === 0) {
+                                $stmtGroupFind = $db->prepare(
+                                    "SELECT id FROM `groups` WHERE class_id = ? AND name = ? LIMIT 1"
+                                );
+                                $stmtGroupFind->execute([$values[':class_id'], $groupName]);
+                                $groupId = (int)($stmtGroupFind->fetchColumn() ?: 0);
+                            }
+
                             if ($groupId > 0) {
-                                // Lie l'élève au groupe
                                 $stmtGroupStudent->execute([
                                     ':group_id'   => $groupId,
                                     ':student_id' => $studentId,

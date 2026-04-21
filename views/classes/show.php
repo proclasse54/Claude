@@ -1,7 +1,3 @@
-<?php
-$pageTitle = $class['name'] . ' — ProClasse';
-ob_start();
-?>
 <div class="page-header">
   <div>
     <a href="/classes" class="btn btn-ghost btn-sm">← Retour</a>
@@ -144,24 +140,33 @@ ob_start();
       <h2>Nouveau plan de salle</h2>
       <button class="modal-close" onclick="closeModal('newPlanModal')">&times;</button>
     </div>
-    <form onsubmit="createPlan(event)">
-      <div class="form-group">
-        <label>Salle</label>
-        <select name="room_id" required>
-          <?php foreach ($rooms as $r): ?>
-          <option value="<?= $r['id'] ?>"><?= htmlspecialchars($r['name']) ?></option>
-          <?php endforeach; ?>
-        </select>        
-      </div>
-      <div class="form-group">
-        <label>Nom du plan</label>
-        <input type="text" name="name" value="Plan par défaut">
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-ghost" onclick="closeModal('newPlanModal')">Annuler</button>
-        <button type="submit" class="btn btn-primary">Créer</button>
-      </div>
-    </form>
+      <form onsubmit="createPlan(event)">
+        <div class="form-group">
+          <label>Salle</label>
+          <select name="room_id" required>
+            <?php foreach ($rooms as $r): ?>
+            <option value="<?= $r['id'] ?>"><?= htmlspecialchars($r['name']) ?></option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Pour quel groupe ? <span class="text-muted text-sm">(optionnel — laisser vide = toute la classe)</span></label>
+          <select name="group_id">
+            <option value="">— Toute la classe —</option>
+            <?php foreach ($groups as $g): ?>
+            <option value="<?= $g['id'] ?>"><?= htmlspecialchars($g['name']) ?> (<?= $g['student_count'] ?> élèves)</option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Nom du plan</label>
+          <input type="text" name="name" value="Plan par défaut">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" onclick="closeModal('newPlanModal')">Annuler</button>
+          <button type="submit" class="btn btn-primary">Créer</button>
+        </div>
+      </form>
   </div>
 </div>
 
@@ -236,8 +241,9 @@ function createPlan(e) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      room_id: parseInt(fd.get('room_id'), 10),
-      name: fd.get('name') || 'Plan par défaut',
+      room_id:  parseInt(fd.get('room_id'), 10),
+      group_id: fd.get('group_id') ? parseInt(fd.get('group_id'), 10) : null,
+      name:     fd.get('name') || 'Plan par défaut',
     })
   }).then(r => r.json()).then(d => {
     if (d.ok) window.location = '/classes/' + CLASS_ID + '?tab=plans';
@@ -260,6 +266,3 @@ function deletePlan(id) {
 })();
 
 </script>
-<?php
-$content = ob_get_clean();
-require __DIR__ . '/../layouts/app.php';

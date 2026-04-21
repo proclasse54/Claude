@@ -38,7 +38,7 @@ class ClassController {
         $stmtPlans = $db->prepare("SELECT sp.*, r.name as room_name FROM seating_plans sp JOIN rooms r ON r.id=sp.room_id WHERE sp.class_id=?");
         $stmtPlans->execute([$p['id']]);
         $plans = $stmtPlans->fetchAll();
-        
+
         $stmtGroups = $db->prepare("
             SELECT g.*, COUNT(gs.student_id) as student_count
             FROM `groups` g
@@ -49,6 +49,10 @@ class ClassController {
         ");
         $stmtGroups->execute([$p['id']]);
         $groups = $stmtGroups->fetchAll();
+
+        // DEBUG TEMPORAIRE - à supprimer après
+        error_log("class_id=" . $p['id'] . " groups=" . count($groups));
+        error_log(print_r($groups, true));
 
         $pageTitle = htmlspecialchars($class['name']);
         ob_start();
@@ -73,8 +77,21 @@ class ClassController {
         $plan = $stmtPlan->fetch();
         if (!$plan) { http_response_code(404); return; }
 
-        $stmtStudents = $db->prepare("SELECT id, first_name, last_name FROM students WHERE class_id=? ORDER BY last_name, first_name");
-        $stmtStudents->execute([$plan['class_id']]);
+        if (!empty($plan['group_id'])) {
+            $stmtStudents = $db->prepare("
+                SELECT s.id, s.first_name, s.last_name
+                FROM students s
+                JOIN group_students gs ON gs.student_id = s.id
+                WHERE gs.group_id = ?
+                ORDER BY s.last_name, s.first_name
+            ");
+            $stmtStudents->execute([$plan['group_id']]);
+        } else {
+            $stmtStudents = $db->prepare(
+                "SELECT id, first_name, last_name FROM students WHERE class_id=? ORDER BY last_name, first_name"
+            );
+            $stmtStudents->execute([$plan['class_id']]);
+        }
         $students = $stmtStudents->fetchAll();
 
         $stmtAssignments = $db->prepare("
@@ -168,17 +185,23 @@ class ClassController {
         if (!is_array($data) || empty($data['room_id'])) {
             Response::json(['error' => 'Données invalides'], 400);
             return;
-        }        
+        }
+
+        $groupId = !empty($data['group_id']) ? (int)$data['group_id'] : null;
 
         $db = Database::get();
-        $stmtExisting = $db->prepare("SELECT id FROM seating_plans WHERE class_id=? AND room_id=? AND name=?");
-        $stmtExisting->execute([$p['id'], $data['room_id'], $data['name'] ?? 'Plan par défaut']);
+        $stmtExisting = $db->prepare(
+            "SELECT id FROM seating_plans 
+            WHERE class_id=? AND room_id=? AND name=? AND (group_id <=> ?)"
+        );
+        $stmtExisting->execute([$p['id'], $data['room_id'], $data['name'] ?? 'Plan par défaut', $groupId]);
         $existing = $stmtExisting->fetch();
+
         if ($existing) {
             $planId = $existing['id'];
         } else {
-            $db->prepare("INSERT INTO seating_plans (class_id, room_id, name) VALUES (?,?,?)")
-               ->execute([$p['id'], $data['room_id'], $data['name'] ?? 'Plan par défaut']);
+            $db->prepare("INSERT INTO seating_plans (class_id, group_id, room_id, name) VALUES (?,?,?,?)")
+            ->execute([$p['id'], $groupId, $data['room_id'], $data['name'] ?? 'Plan par défaut']);
             $planId = (int)$db->lastInsertId();
         }
         Response::json(['ok' => true, 'id' => $planId]);

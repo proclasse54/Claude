@@ -130,6 +130,7 @@ CREATE TABLE IF NOT EXISTS seating_plans (
     UNIQUE KEY uq_plan (class_id, room_id, name),
     FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
     FOREIGN KEY (room_id)  REFERENCES rooms(id)   ON DELETE CASCADE
+    FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 -- ------------------------------------------------------------
@@ -240,5 +241,3 @@ CREATE TABLE IF NOT EXISTS group_students (
     FOREIGN KEY (group_id) REFERENCES `groups`(id) ON DELETE CASCADE,
     FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;    
-
-
