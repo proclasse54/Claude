@@ -71,58 +71,89 @@
 <!-- ═══ VUE SEMAINE ═══ -->
 <div id="viewWeek" hidden>
 
-  <!-- Navigation semaine -->
   <?php
     $prevWeek = (clone $weekDate)->modify('-1 week')->format('o\-\WW');
     $nextWeek = (clone $weekDate)->modify('+1 week')->format('o\-\WW');
     $weekLabel = 'Semaine du '.(new \DateTime($weekStart))->format('d/m').' au '.(new \DateTime($weekEnd))->format('d/m/Y');
   ?>
+
+  <!-- Navigation semaine -->
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
     <a href="?view=week&week=<?= $prevWeek ?>" class="btn btn-sm">← Semaine préc.</a>
     <strong><?= $weekLabel ?></strong>
     <a href="?view=week&week=<?= $nextWeek ?>" class="btn btn-sm">Semaine suiv. →</a>
   </div>
 
-  <!-- Grille 5 jours -->
   <?php
-    $jours = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi'];
-    $dates = [];
+    $jours      = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi'];
+    $dates      = [];
     for ($i = 0; $i < 5; $i++) {
-      $dates[] = (new \DateTime($weekStart))->modify("+$i days")->format('Y-m-d');
+        $dates[] = (new \DateTime($weekStart))->modify("+$i days")->format('Y-m-d');
     }
     $byDate = [];
     foreach ($weekSessions as $ws) {
-      $byDate[$ws['date']][] = $ws;
+        $byDate[$ws['date']][] = $ws;
     }
+    $heureDebut   = 8;
+    $heureFin     = 18;
+    $pxParHeure   = 64;
+    $hauteurTotal = ($heureFin - $heureDebut) * $pxParHeure;
   ?>
-  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:.5rem;">
-    <?php foreach ($dates as $i => $d): ?>
-    <div style="border:1px solid var(--color-border);border-radius:var(--radius-md);overflow:hidden;min-height:200px;">
-      <div style="background:var(--color-surface-offset);padding:.4rem;text-align:center;font-weight:600;font-size:var(--text-sm);border-bottom:1px solid var(--color-border);">
-        <?= $jours[$i] ?><br>
-        <small style="font-weight:400;"><?= (new \DateTime($d))->format('d/m') ?></small>
+
+  <!-- Agenda : axe horaire + grille 5 jours -->
+  <div class="week-agenda">
+
+    <!-- Colonne axe horaire -->
+    <div class="week-axis">
+      <div class="week-axis-header"></div><!-- vide, aligne avec les headers de jours -->
+      <div class="week-axis-body" style="height:<?= $hauteurTotal ?>px;">
+        <?php for ($h = $heureDebut; $h <= $heureFin; $h++): ?>
+        <div class="week-axis-label" style="top:<?= ($h - $heureDebut) * $pxParHeure ?>px;">
+          <?= sprintf('%02d', $h) ?>:00
+        </div>
+        <?php endfor ?>
       </div>
-      <?php if (empty($byDate[$d])): ?>
-        <div style="color:var(--color-text-faint);text-align:center;padding:1rem;">—</div>
-      <?php else: ?>
-        <?php foreach ($byDate[$d] as $ws): ?>
-        <div onclick="window.location='/sessions/<?= $ws['id'] ?>/live'"
-             style="margin:.4rem;padding:.5rem .6rem;background:var(--color-primary-highlight);border-left:3px solid var(--color-primary);border-radius:var(--radius-sm);cursor:pointer;font-size:var(--text-sm);">
-          <div style="font-size:var(--text-xs);color:var(--color-text-muted);">
-            <?= $ws['time_start'] ? substr($ws['time_start'],0,5) : '' ?>
-            <?= $ws['time_end']   ? '–'.substr($ws['time_end'],0,5) : '' ?>
-          </div>
-          <div style="font-weight:600;"><?= htmlspecialchars($ws['class_name']) ?></div>
-          <div style="font-size:var(--text-xs);color:var(--color-text-muted);"><?= htmlspecialchars($ws['room_name']) ?></div>
-          <?php if ($ws['subject']): ?>
-          <div style="font-size:var(--text-xs);color:var(--color-text-muted);"><?= htmlspecialchars($ws['subject']) ?></div>
+    </div>
+
+    <!-- Grille 5 jours -->
+    <div class="week-grid">
+      <?php foreach ($dates as $i => $d): ?>
+      <div class="week-col">
+        <div class="week-col-header">
+          <?= $jours[$i] ?>
+          <small><?= (new \DateTime($d))->format('d/m') ?></small>
+        </div>
+        <div class="week-col-body" style="height:<?= $hauteurTotal ?>px;">
+          <?php if (empty($byDate[$d])): ?>
+            <!-- jour vide, les lignes horaires suffisent -->
+          <?php else: ?>
+            <?php foreach ($byDate[$d] as $ws):
+              if (!$ws['time_start'] || !$ws['time_end']) continue;
+              [$h,  $m ] = array_map('intval', explode(':', substr($ws['time_start'], 0, 5)));
+              [$h2, $m2] = array_map('intval', explode(':', substr($ws['time_end'],   0, 5)));
+              $top    = (($h  + $m  / 60) - $heureDebut) * $pxParHeure;
+              $height = (($h2 + $m2 / 60) - ($h + $m / 60)) * $pxParHeure - 2;
+            ?>
+            <div class="week-card"
+                 style="top:<?= round($top) ?>px;height:<?= round($height) ?>px;"
+                 onclick="window.location='/sessions/<?= $ws['id'] ?>/live'">
+              <div class="week-card-time">
+                <?= substr($ws['time_start'],0,5) ?>–<?= substr($ws['time_end'],0,5) ?>
+              </div>
+              <div class="week-card-class"><?= htmlspecialchars($ws['class_name']) ?></div>
+              <div class="week-card-room"><?= htmlspecialchars($ws['room_name']) ?></div>
+              <?php if ($ws['subject']): ?>
+              <div class="week-card-subject"><?= htmlspecialchars($ws['subject']) ?></div>
+              <?php endif ?>
+            </div>
+            <?php endforeach ?>
           <?php endif ?>
         </div>
-        <?php endforeach ?>
-      <?php endif ?>
+      </div>
+      <?php endforeach ?>
     </div>
-    <?php endforeach ?>
-  </div>
+
+  </div><!-- .week-agenda -->
 </div>
 
 <!-- ═══ MODAL NOUVELLE SÉANCE ═══ -->

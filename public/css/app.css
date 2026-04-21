@@ -465,31 +465,162 @@ kbd {
 /* ── Header actions (multiple boutons) ───────────────────── */
 .header-actions { display: flex; gap: var(--space-3); flex-wrap: wrap; }
 
-/* Toggle */
-.view-toggle { display:flex; gap:.5rem; margin-bottom:1rem; }
-.btn-view { padding:.4rem .9rem; border:1px solid var(--color-border); border-radius:var(--radius-md); background:var(--color-surface); cursor:pointer; }
-.btn-view.active { background:var(--color-primary); color:#fff; border-color:var(--color-primary); }
+/* ── Toggle vue ───────────────────────────────────────────── */
+.view-toggle {
+    display: flex;
+    gap: .5rem;
+    margin-bottom: 1rem;
+}
+.btn-view {
+    padding: .4rem .9rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    font-size: var(--text-sm);
+    transition: background var(--transition), color var(--transition);
+}
+.btn-view.active {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+}
 
-/* Navigation semaine */
-.week-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; }
-.btn-week-nav { padding:.35rem .8rem; border:1px solid var(--color-border); border-radius:var(--radius-sm); text-decoration:none; color:var(--color-text); background:var(--color-surface); }
+/* ── Grille semaine ───────────────────────────────────────── */
+.week-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    flex: 1;
+    min-width: 0;
+}
+.week-col {
+    border-right: 1px solid var(--border);
+    min-width: 0;
+}
+.week-col:last-child {
+    border-right: none;
+}
+.week-col-body {
+    position: relative;
+    background-image: repeating-linear-gradient(
+        to bottom,
+        var(--border) 0px,
+        var(--border) 1px,
+        transparent 1px,
+        transparent 64px /* = $pxParHeure */
+    );
+}
 
-/* Grille 5 colonnes */
-.week-grid { gap: 0;border: 1px solid var(--color-border);border-radius: var(--radius-md);overflow: hidden;}
-.week-col {border: none;border-right: 1px solid var(--color-border);border-radius: 0;}
-.week-col-header {text-align: left;padding: .4rem .6rem;}
-.week-col:last-child {border-right: none;}
-.week-empty { color:var(--color-text-faint); text-align:center; padding:1rem; }
+.week-col-header {
+    height: 2rem;
+    background: var(--surface);
+    padding: 0 .6rem;
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    font-weight: 600;
+    font-size: var(--text-sm);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    overflow: hidden;
+}
+.week-col-header small {
+    font-weight: 400;
+    color: var(--text-muted);
+}
+.week-empty {
+    color: var(--text-faint);
+    text-align: left;
+    padding: 1rem .6rem;
+}
 
-/* Carte séance */
-.week-card { margin:.4rem; padding:.5rem .6rem; background:var(--color-primary-highlight); border-left:3px solid var(--color-primary); border-radius:var(--radius-sm); cursor:pointer; font-size:var(--text-sm); }
-.week-card:hover { background:var(--color-primary); color:#fff; }
-.week-card-time { font-size:var(--text-xs); color:var(--color-text-muted); }
-.week-card-class { font-weight:600; }
-.week-card-room, .week-card-subject { font-size:var(--text-xs); color:var(--color-text-muted); }
+/* ── Carte séance ─────────────────────────────────────────── */
+.week-card {
+    position: absolute;
+    left: .25rem;
+    right: .25rem;
+    padding: .25rem .4rem;
+    background: color-mix(in oklab, var(--primary) 12%, var(--surface-2));
+    border-left: 3px solid var(--primary);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: var(--text-xs);
+    overflow: hidden;
+    transition: background var(--transition), color var(--transition);
+}
+.week-card:hover {
+    background: var(--primary);
+    color: #fff;
+    z-index: 1;
+}
+.week-card-time {
+    color: var(--text-muted);
+    margin-bottom: .1rem;
+}
+.week-card-class {
+    font-weight: 700;
+    font-size: var(--text-sm);
+}
+.week-card-room,
+.week-card-subject {
+    color: var(--text-muted);
+}
 .week-card:hover .week-card-time,
 .week-card:hover .week-card-room,
-.week-card:hover .week-card-subject { color:rgba(255,255,255,.8); }
+.week-card:hover .week-card-subject {
+    color: rgba(255,255,255,.8);
+}
 
+
+/* ── Agenda wrapper ───────────────────────────────────────── */
+.week-agenda {
+    display: flex;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+/* ── Axe horaire ──────────────────────────────────────────── */
+.week-axis {
+    flex-shrink: 0;
+    width: 3rem;
+    border-right: 1px solid var(--border);
+}
+.week-axis-header {
+    height: 2rem; /* même hauteur que .week-col-header */
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+}
+.week-axis-body {
+    position: relative;
+}
+.week-axis-label {
+    position: absolute;
+    right: .3rem;
+    transform: translateY(-50%);
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    line-height: 1;
+    white-space: nowrap;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* ── Corps de colonne avec lignes horaires ────────────────── */
+
+
+/* ── Cartes séance ────────────────────────────────────────── */
 
 
