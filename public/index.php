@@ -77,8 +77,7 @@ $router->add('DELETE', '/api/tags/{id}',                    fn($p)=> (new Sessio
 $router->add('GET',     '/',                                fn()  => Response::redirect('/sessions'));
 
 // Tags
-$router->add('GET',     '/tags',                            fn()  => (new SessionController)->tagsIndex());
-$router->add('POST',    '/api/tags',                        fn()  => (new SessionController)->apiSaveTag());
+$router->add('GET',    '/tags',                             fn()  => (new SessionController)->tagsIndex());
 
 // ── Dispatch ──────────────────────────────────────────────────
 $method = $_SERVER['REQUEST_METHOD'];

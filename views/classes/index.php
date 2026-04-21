@@ -1,7 +1,4 @@
-<?php
-$pageTitle = 'Classes — ProClasse';
-ob_start();
-?>
+
 <div class="page-header">
   <div>
     <h1>Classes</h1>
@@ -237,6 +234,3 @@ function deleteAll() {
     .then(() => location.reload());
 }
 </script>
-<?php
-$content = ob_get_clean();
-require __DIR__ . '/../layouts/app.php';
