@@ -153,23 +153,30 @@ function deleteTag(id, label) {
 }
 
 // ── Emoji picker ────────────────────────────────────────────
-const emojiPicker  = document.getElementById('emojiPicker');
-const emojiBtn     = document.getElementById('btnEmojiPicker');
-const tagIconInput = document.getElementById('tagIcon');
+let emojiPickerReady = false;
 
-emojiBtn.addEventListener('click', (e) => {
+document.getElementById('btnEmojiPicker').addEventListener('click', function(e) {
     e.stopPropagation();
-    emojiPicker.classList.toggle('emoji-picker-hidden');
-});
 
-emojiPicker.addEventListener('emoji-click', (e) => {
-    tagIconInput.value = e.detail.unicode;
-    emojiPicker.classList.add('emoji-picker-hidden');
-});
+    // Initialisation lazy au premier clic
+    if (!emojiPickerReady) {
+        const picker = document.getElementById('emojiPicker');
+        const input  = document.getElementById('tagIcon');
 
-document.addEventListener('click', (e) => {
-    if (!emojiPicker.contains(e.target) && e.target !== emojiBtn) {
-        emojiPicker.classList.add('emoji-picker-hidden');
+        picker.addEventListener('emoji-click', (ev) => {
+            input.value = ev.detail.unicode;
+            picker.classList.add('emoji-picker-hidden');
+        });
+
+        document.addEventListener('click', (ev) => {
+            if (!picker.contains(ev.target) && ev.target !== document.getElementById('btnEmojiPicker')) {
+                picker.classList.add('emoji-picker-hidden');
+            }
+        });
+
+        emojiPickerReady = true;
     }
+
+    document.getElementById('emojiPicker').classList.toggle('emoji-picker-hidden');
 });
 </script>

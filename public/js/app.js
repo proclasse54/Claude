@@ -33,14 +33,17 @@ document.addEventListener('keydown', e => {
 
 //  toggle vue séances + persistance dans l'URL
 function setView(v) {
-    document.getElementById('viewList').hidden = (v === 'week');
-    document.getElementById('viewWeek').hidden = (v === 'list');
-    document.getElementById('btnList').classList.toggle('active', v === 'list');
-    document.getElementById('btnWeek').classList.toggle('active', v === 'week');
+    const viewList = document.getElementById('viewList');
+    const viewWeek = document.getElementById('viewWeek');
+    if (!viewList || !viewWeek) return; // pas sur la page séances → on sort
+    viewList.hidden = (v === 'week');
+    viewWeek.hidden = (v === 'list');
+    const btnList = document.getElementById('btnList');
+    const btnWeek = document.getElementById('btnWeek');
+    if (btnList) btnList.classList.toggle('active', v === 'list');
+    if (btnWeek) btnWeek.classList.toggle('active', v === 'week');
     const url = new URL(location.href);
     url.searchParams.set('view', v);
     history.replaceState(null, '', url);
 }
-// Restaurer la vue depuis l'URL
-const initView = new URLSearchParams(location.search).get('view') || 'list';
-setView(initView);
+setView(new URLSearchParams(location.search).get('view') || 'week');

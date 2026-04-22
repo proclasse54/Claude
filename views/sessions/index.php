@@ -188,18 +188,7 @@
 </div>
 
 <script>
-// ── Toggle vue ──────────────────────────────────────────────
-function setView(v) {
-    document.getElementById('viewList').hidden = (v === 'week');
-    document.getElementById('viewWeek').hidden = (v === 'list');
-    document.getElementById('btnList').classList.toggle('active', v === 'list');
-    document.getElementById('btnWeek').classList.toggle('active', v === 'week');
-    const url = new URL(location.href);
-    url.searchParams.set('view', v);
-    history.replaceState(null, '', url);
-}
-// Restaurer la vue depuis l'URL au chargement
-setView(new URLSearchParams(location.search).get('view') || 'week');
+
 
 // ── Modal & CRUD ────────────────────────────────────────────
 function openNewSessionModal() {
