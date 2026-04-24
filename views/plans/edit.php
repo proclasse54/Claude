@@ -34,14 +34,12 @@ ob_start();
     <div class="plan-room" id="planRoom" style="--room-cols: <?= $room['cols'] ?>">
       <?php foreach ($grid as $rowIdx => $cols): ?>
         <?php foreach ($cols as $colIdx => $seat): ?>
-
           <?php if ($seat === null): ?>
             <div class="plan-seat inactive"></div>
           <?php else: ?>
             <?php $assigned = $assignMap[$seat['id']] ?? null; ?>
             <div class="plan-seat <?= $assigned ? 'assigned' : 'free' ?>"
-                data-seat-id="<?= $seat['id'] ?>"
-                onclick="selectSeat(<?= $seat['id'] ?>)">
+                data-seat-id="<?= $seat['id'] ?>">
               <?php if ($assigned): ?>
                 <span class="plan-seat-name"><?= htmlspecialchars($assigned['first_name']) ?><br><small><?= htmlspecialchars($assigned['last_name']) ?></small></span>
               <?php else: ?>
@@ -49,7 +47,6 @@ ob_start();
               <?php endif; ?>
             </div>
           <?php endif; ?>
-
         <?php endforeach; ?>
       <?php endforeach; ?>
     </div>
@@ -68,8 +65,7 @@ ob_start();
           data-first="<?= htmlspecialchars($st['first_name']) ?>"
           data-last="<?= htmlspecialchars($st['last_name']) ?>"
           data-name="<?= strtolower($st['last_name'] . ' ' . $st['first_name'])?>"
-          draggable="true"
-          onclick="assignStudent(<?= $st['id'] ?>)">
+          draggable="true">
         <span class="student-initials"><?= mb_substr($st['first_name'],0,1) . mb_substr($st['last_name'],0,1) ?></span>
         <span class="student-fullname"><?= htmlspecialchars($st['first_name'] . ' ' . $st['last_name']) ?></span>
         <?php if (isset($assignedStudents[$st['id']])): ?>
@@ -86,96 +82,91 @@ ob_start();
 const PLAN_ID   = <?= $plan['id'] ?>;
 const ROOM_COLS = <?= $room['cols'] ?>;
 
-// État local : seat_id → student_id (ou null)
+// ─── État ────────────────────────────────────────────────────
 let assignments = {};
 <?php foreach ($assignments as $a): ?>
 assignments[<?= $a['seat_id'] ?>] = <?= $a['student_id'] ?>;
 <?php endforeach; ?>
 
-// student_id → seat_id (inverse)
 let studentSeat = {};
-Object.entries(assignments).forEach(([sid, stid]) => { if(stid) studentSeat[stid] = parseInt(sid); });
+Object.entries(assignments).forEach(([sid, stid]) => {
+  if (stid) studentSeat[stid] = parseInt(sid);
+});
 
 let selectedSeatId = null;
 
-/* ─────────────────────────────────────────────
-   LOGIQUE MÉTIER (inchangée)
-───────────────────────────────────────────── */
-function selectSeat(seatId) {
-  document.querySelectorAll('.plan-seat').forEach(s => s.classList.remove('selected'));
-  const el = document.querySelector(`[data-seat-id="${seatId}"]`);
-  if (el) el.classList.add('selected');
-  selectedSeatId = seatId;
-}
+// ─── Helpers DOM ─────────────────────────────────────────────
+const planRoom = document.getElementById('planRoom');
 
-function assignStudent(studentId) {
-  if (!selectedSeatId) { alert('Cliquez d\'abord sur un siège.'); return; }
+function getSeatEl(seatId)    { return planRoom.querySelector(`[data-seat-id="${seatId}"]`); }
+function getStudentEl(studId) { return document.querySelector(`[data-student-id="${studId}"]`); }
 
-  if (studentSeat[studentId]) {
-    const oldSeatId = studentSeat[studentId];
-    assignments[oldSeatId] = null;
-    renderSeat(oldSeatId, null);
-  }
-
-  const prevStudent = assignments[selectedSeatId];
-  if (prevStudent) { delete studentSeat[prevStudent]; updateStudentEl(prevStudent); }
-
-  assignments[selectedSeatId] = studentId;
-  studentSeat[studentId] = selectedSeatId;
-  renderSeat(selectedSeatId, studentId);
-  updateStudentEl(studentId);
-  selectedSeatId = null;
-  document.querySelectorAll('.plan-seat').forEach(s => s.classList.remove('selected'));
-}
-
-// Variante sans alerte, utilisée par le drag & drop
-function assignStudentToSeat(studentId, seatId) {
-  if (studentSeat[studentId]) {
-    const oldSeatId = studentSeat[studentId];
-    assignments[oldSeatId] = null;
-    renderSeat(oldSeatId, null);
-  }
-  const prevStudent = assignments[seatId];
-  if (prevStudent) { delete studentSeat[prevStudent]; updateStudentEl(prevStudent); }
-
-  assignments[seatId] = studentId;
-  studentSeat[studentId] = seatId;
-  renderSeat(seatId, studentId);
-  updateStudentEl(studentId);
-  selectedSeatId = null;
-  document.querySelectorAll('.plan-seat').forEach(s => s.classList.remove('selected'));
-}
-
+// ─── Rendu ───────────────────────────────────────────────────
 function renderSeat(seatId, studentId) {
-  const el = document.querySelector(`[data-seat-id="${seatId}"]`);
+  const el = getSeatEl(seatId);
   if (!el) return;
   if (studentId) {
-    const stEl = document.querySelector(`[data-student-id="${studentId}"]`);
+    const stEl = getStudentEl(studentId);
     const first = stEl?.dataset.first ?? '';
     const last  = stEl?.dataset.last  ?? '';
+    // On met à jour uniquement les classes et le contenu — SANS toucher aux listeners
     el.className = 'plan-seat assigned';
-    el.dataset.seatId = seatId;
+    el.draggable = true;
     el.innerHTML = `<span class="plan-seat-name">${first}<br><small>${last}</small></span>`;
-    // Rendre le siège occupé aussi draggable (pour déplacer d'un siège à l'autre)
-    initSeatDrag(el, studentId);
   } else {
     el.className = 'plan-seat free';
-    el.dataset.seatId = seatId;
+    el.draggable = false;
     el.innerHTML = `<span class="plan-seat-empty">—</span>`;
-    el.removeAttribute('draggable');
   }
 }
 
 function updateStudentEl(studentId) {
-  const el = document.querySelector(`[data-student-id="${studentId}"]`);
+  const el = getStudentEl(studentId);
   if (!el) return;
   if (studentSeat[studentId]) {
     el.classList.add('placed');
-    el.querySelector('.placed-badge') || el.insertAdjacentHTML('beforeend','<span class="placed-badge">✓</span>');
+    el.querySelector('.placed-badge') || el.insertAdjacentHTML('beforeend', '<span class="placed-badge">✓</span>');
   } else {
     el.classList.remove('placed');
     el.querySelector('.placed-badge')?.remove();
   }
+}
+
+// ─── Logique métier ──────────────────────────────────────────
+function doAssign(studentId, seatId) {
+  // Libérer l'ancien siège de cet élève
+  if (studentSeat[studentId]) {
+    const old = studentSeat[studentId];
+    assignments[old] = null;
+    renderSeat(old, null);
+  }
+  // Libérer l'élève qui était sur ce siège
+  const prev = assignments[seatId];
+  if (prev) { delete studentSeat[prev]; updateStudentEl(prev); }
+
+  // Affecter
+  assignments[seatId] = studentId;
+  studentSeat[studentId] = seatId;
+  renderSeat(seatId, studentId);
+  updateStudentEl(studentId);
+
+  // Désélectionner
+  selectedSeatId = null;
+  planRoom.querySelectorAll('.plan-seat').forEach(s => s.classList.remove('selected'));
+}
+
+// Clic siège (sélection)
+function selectSeat(seatId) {
+  planRoom.querySelectorAll('.plan-seat').forEach(s => s.classList.remove('selected'));
+  const el = getSeatEl(seatId);
+  if (el) el.classList.add('selected');
+  selectedSeatId = seatId;
+}
+
+// Clic élève (affectation par clic)
+function assignStudent(studentId) {
+  if (!selectedSeatId) { alert('Cliquez d\'abord sur un siège.'); return; }
+  doAssign(studentId, selectedSeatId);
 }
 
 function filterStudents(q) {
@@ -197,262 +188,211 @@ function clearAll() {
 
 function savePlan() {
   const data = Object.entries(assignments)
-    .filter(([,v]) => v !== null)
+    .filter(([, v]) => v !== null)
     .map(([seat_id, student_id]) => ({ seat_id: parseInt(seat_id), student_id }));
 
   fetch(`/api/plans/${PLAN_ID}/assignments`, {
     method: 'POST',
-    headers: {'Content-Type': 'application/json'},
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ assignments: data })
   })
   .then(r => r.json())
   .then(d => { if (d.ok) alert('Plan enregistré ✅'); });
 }
 
-/* ─────────────────────────────────────────────
-   DRAG & DROP — SOURIS (HTML5 natif)
-───────────────────────────────────────────── */
+// ─────────────────────────────────────────────────────────────
+//  DRAG & DROP — principe clé :
+//  Les listeners sont posés UNE SEULE FOIS sur les conteneurs
+//  (délégation d'événements). On ne retouche jamais le DOM
+//  des éléments individuels → zéro cloneNode, zéro doublon.
+// ─────────────────────────────────────────────────────────────
 
-// draggedStudentId : ID de l'élève en cours de glissement
+// ─── Drag souris — SOURCE (élèves + sièges occupés) ──────────
+// draggedStudentId : résolu dynamiquement à chaque dragstart
 let draggedStudentId = null;
 
-// Initialise le drag sur un élément .plan-student (liste sidebar)
-function initStudentDrag(el) {
-el.addEventListener('dragstart', e => {
+// Délégation sur la sidebar (élèves)
+document.getElementById('studentList').addEventListener('dragstart', e => {
+  const el = e.target.closest('.plan-student');
+  if (!el) return;
   draggedStudentId = parseInt(el.dataset.studentId);
   el.classList.add('dragging');
-  document.getElementById('planRoom').classList.add('drag-active'); // ← ajouter
+  planRoom.classList.add('drag-active');
   e.dataTransfer.effectAllowed = 'move';
-  e.dataTransfer.setData('text/plain', draggedStudentId);
+  e.dataTransfer.setData('text/plain', String(draggedStudentId));
 });
-el.addEventListener('dragend', () => {
-  el.classList.remove('dragging');
-  document.getElementById('planRoom').classList.remove('drag-active'); // ← ajouter
+document.getElementById('studentList').addEventListener('dragend', e => {
+  const el = e.target.closest('.plan-student');
+  if (el) el.classList.remove('dragging');
+  planRoom.classList.remove('drag-active');
   draggedStudentId = null;
 });
+
+// Délégation sur la grille (sièges occupés → drag siège→siège)
+planRoom.addEventListener('dragstart', e => {
+  const el = e.target.closest('.plan-seat.assigned');
+  if (!el) { e.preventDefault(); return; }
+  const seatId = parseInt(el.dataset.seatId);
+  draggedStudentId = assignments[seatId] ?? null;
+  if (!draggedStudentId) { e.preventDefault(); return; }
+  el.classList.add('dragging');
+  planRoom.classList.add('drag-active');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', String(draggedStudentId));
+});
+planRoom.addEventListener('dragend', e => {
+  const el = e.target.closest('.plan-seat');
+  if (el) el.classList.remove('dragging');
+  planRoom.classList.remove('drag-active');
+  draggedStudentId = null;
+});
+
+// ─── Drag souris — CIBLE (sièges) ────────────────────────────
+planRoom.addEventListener('dragover', e => {
+  const seat = e.target.closest('.plan-seat:not(.inactive)');
+  if (!seat) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  seat.classList.add('drag-over');
+});
+planRoom.addEventListener('dragleave', e => {
+  const seat = e.target.closest('.plan-seat');
+  if (seat && !seat.contains(e.relatedTarget)) seat.classList.remove('drag-over');
+});
+planRoom.addEventListener('drop', e => {
+  const seat = e.target.closest('.plan-seat:not(.inactive)');
+  if (!seat) return;
+  e.preventDefault();
+  seat.classList.remove('drag-over');
+  planRoom.classList.remove('drag-active');
+  const stuId = parseInt(e.dataTransfer.getData('text/plain'));
+  const seatId = parseInt(seat.dataset.seatId);
+  if (!isNaN(stuId) && !isNaN(seatId)) doAssign(stuId, seatId);
+});
+
+// ─── Clic sur les sièges (délégation) ────────────────────────
+planRoom.addEventListener('click', e => {
+  const seat = e.target.closest('.plan-seat:not(.inactive)');
+  if (!seat) return;
+  selectSeat(parseInt(seat.dataset.seatId));
+});
+
+// ─── Clic sur les élèves (délégation) ────────────────────────
+document.getElementById('studentList').addEventListener('click', e => {
+  const el = e.target.closest('.plan-student');
+  if (!el) return;
+  assignStudent(parseInt(el.dataset.studentId));
+});
+
+// ─────────────────────────────────────────────────────────────
+//  DRAG TACTILE — Touch Events (tablette / iPad)
+// ─────────────────────────────────────────────────────────────
+let touchClone   = null;
+let touchStudId  = null;
+let touchOffX    = 0;
+let touchOffY    = 0;
+
+function touchStart(e, studentId, sourceEl) {
+  const t = e.touches[0];
+  touchStudId = studentId;
+  const rect = sourceEl.getBoundingClientRect();
+  touchOffX = t.clientX - rect.left;
+  touchOffY = t.clientY - rect.top;
+
+  touchClone = sourceEl.cloneNode(true);
+  Object.assign(touchClone.style, {
+    position: 'fixed', left: rect.left + 'px', top: rect.top + 'px',
+    width: rect.width + 'px', height: rect.height + 'px',
+    opacity: '0.75', pointerEvents: 'none', zIndex: '9999',
+    boxShadow: '0 8px 24px rgba(0,0,0,.25)',
+    borderRadius: 'var(--radius-lg)',
+    transform: 'scale(1.05)', transition: 'none',
+  });
+  document.body.appendChild(touchClone);
+  sourceEl.classList.add('dragging');
+  planRoom.classList.add('drag-active');
 }
 
-
-
-// Initialise le drag sur un .plan-seat occupé (pour déplacer d'un siège à l'autre)
-function initSeatDrag(el, studentId) {
-  el.setAttribute('draggable', 'true');
-  // Supprimer les anciens listeners en clonant (simple et propre)
-  const clone = el.cloneNode(true);
-  el.parentNode.replaceChild(clone, el);
-  const fresh = clone;
-
-  // Remettre l'onclick perdu lors du cloneNode
-  fresh.addEventListener('click', () => selectSeat(parseInt(fresh.dataset.seatId)));
-
-  fresh.addEventListener('dragstart', e => {
-    draggedStudentId = studentId;
-    fresh.classList.add('dragging');
-    document.getElementById('planRoom').classList.add('drag-active'); // ← ajouter
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', studentId);
-  });
-  fresh.addEventListener('dragend', () => {
-    fresh.classList.remove('dragging');
-    document.getElementById('planRoom').classList.remove('drag-active'); // ← ajouter
-    draggedStudentId = null;
-  });
-
-  // Remettre les drop listeners sur ce siège aussi
-  initSeatDrop(fresh);
+function touchMove(e) {
+  if (!touchClone) return;
+  e.preventDefault();
+  const t = e.touches[0];
+  touchClone.style.left = (t.clientX - touchOffX) + 'px';
+  touchClone.style.top  = (t.clientY - touchOffY) + 'px';
+  // Surbrillance siège sous le doigt
+  touchClone.style.display = 'none';
+  planRoom.querySelectorAll('.drag-over').forEach(s => s.classList.remove('drag-over'));
+  const under = document.elementFromPoint(t.clientX, t.clientY)?.closest('.plan-seat:not(.inactive)');
+  touchClone.style.display = '';
+  if (under) under.classList.add('drag-over');
 }
 
-// Initialise le drop sur un .plan-seat
-function initSeatDrop(el) {
-  el.addEventListener('dragover', e => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    el.classList.add('drag-over');
-  });
-  el.addEventListener('dragleave', e => {
-    // Ne pas déclencher sur les enfants (span internes)
-    if (!el.contains(e.relatedTarget)) el.classList.remove('drag-over');
-  });
-  el.addEventListener('drop', e => {
-    e.preventDefault();
-    el.classList.remove('drag-over');
-    const sId = parseInt(el.dataset.seatId);
-    const stuId = parseInt(e.dataTransfer.getData('text/plain'));
-    if (!isNaN(stuId) && !isNaN(sId)) {
-      assignStudentToSeat(stuId, sId);
-    }
-  });
-}
-
-/* ─────────────────────────────────────────────
-   DRAG & DROP — TACTILE (Touch Events)
-   Clone visuel qui suit le doigt
-───────────────────────────────────────────── */
-
-let touchClone    = null;   // élément fantôme qui suit le doigt
-let touchStudId   = null;   // student_id en cours
-let touchOffsetX  = 0;
-let touchOffsetY  = 0;
-
-function initStudentTouch(el) {
-  el.addEventListener('touchstart', e => {
-    const t = e.touches[0];
-    touchStudId = parseInt(el.dataset.studentId);
-
-    // Créer le clone visuel
-    touchClone = el.cloneNode(true);
-    const rect = el.getBoundingClientRect();
-    touchOffsetX = t.clientX - rect.left;
-    touchOffsetY = t.clientY - rect.top;
-
-    Object.assign(touchClone.style, {
-      position:       'fixed',
-      left:           rect.left + 'px',
-      top:            rect.top  + 'px',
-      width:          rect.width + 'px',
-      opacity:        '0.75',
-      pointerEvents:  'none',
-      zIndex:         '9999',
-      boxShadow:      '0 8px 24px rgba(0,0,0,.2)',
-      borderRadius:   'var(--radius-lg)',
-      transform:      'scale(1.05)',
-      transition:     'none',
-    });
-    document.body.appendChild(touchClone);
-    el.classList.add('dragging');
-    document.getElementById('planRoom').classList.add('drag-active');    
-  }, { passive: true });
-
-  el.addEventListener('touchmove', e => {
-    if (!touchClone) return;
-    e.preventDefault();
-    const t = e.touches[0];
-    touchClone.style.left = (t.clientX - touchOffsetX) + 'px';
-    touchClone.style.top  = (t.clientY - touchOffsetY) + 'px';
-    highlightSeatUnderTouch(t.clientX, t.clientY);
-  }, { passive: false });
-
-  el.addEventListener('touchend', e => {
-    if (!touchClone) return;
-    const t = e.changedTouches[0];
-    cleanupTouch(el);
-    dropOnSeatUnderPoint(t.clientX, t.clientY);
-    document.getElementById('planRoom').classList.remove('drag-active');
-  });
-
-  el.addEventListener('touchcancel', e => {
-    cleanupTouch(el);
-    clearDragOverAll();
-    document.getElementById('planRoom').classList.remove('drag-active');
-  });
-}
-
-// Idem pour un siège occupé (drag siège → siège)
-function initSeatTouch(el, studentId) {
-  el.addEventListener('touchstart', e => {
-    const t = e.touches[0];
-    touchStudId = studentId;
-    const rect = el.getBoundingClientRect();
-    touchOffsetX = t.clientX - rect.left;
-    touchOffsetY = t.clientY - rect.top;
-
-    touchClone = el.cloneNode(true);
-    Object.assign(touchClone.style, {
-      position:      'fixed',
-      left:          rect.left + 'px',
-      top:           rect.top  + 'px',
-      width:         rect.width + 'px',
-      height:        rect.height + 'px',
-      opacity:       '0.75',
-      pointerEvents: 'none',
-      zIndex:        '9999',
-      boxShadow:     '0 8px 24px rgba(0,0,0,.25)',
-      borderRadius:  'var(--radius-lg)',
-      transform:     'scale(1.05)',
-      transition:    'none',
-    });
-    document.body.appendChild(touchClone);
-    el.classList.add('dragging');
-    document.getElementById('planRoom').classList.add('drag-active');
-  }, { passive: true });
-
-  el.addEventListener('touchmove', e => {
-    if (!touchClone) return;
-    e.preventDefault();
-    const t = e.touches[0];
-    touchClone.style.left = (t.clientX - touchOffsetX) + 'px';
-    touchClone.style.top  = (t.clientY - touchOffsetY) + 'px';
-    highlightSeatUnderTouch(t.clientX, t.clientY);
-  }, { passive: false });
-
-  el.addEventListener('touchend', e => {
-    if (!touchClone) return;
-    const t = e.changedTouches[0];
-    cleanupTouch(el);
-    dropOnSeatUnderPoint(t.clientX, t.clientY);
-    document.getElementById('planRoom').classList.remove('drag-active');
-  });
-
-  el.addEventListener('touchcancel', e => {
-    cleanupTouch(el);
-    clearDragOverAll();
-    document.getElementById('planRoom').classList.remove('drag-active');
-  });
-}
-
-function highlightSeatUnderTouch(x, y) {
-  clearDragOverAll();
-  // Masquer temporairement le clone pour "voir dessous"
-  if (touchClone) touchClone.style.display = 'none';
-  const target = document.elementFromPoint(x, y)?.closest('.plan-seat:not(.inactive)');
-  if (touchClone) touchClone.style.display = '';
-  if (target) target.classList.add('drag-over');
-}
-
-function dropOnSeatUnderPoint(x, y) {
-  if (touchClone) touchClone.style.display = 'none';
-  const target = document.elementFromPoint(x, y)?.closest('.plan-seat:not(.inactive)');
-  if (touchClone) touchClone.style.display = '';
-  clearDragOverAll();
+function touchEnd(e, sourceEl) {
+  if (!touchClone) return;
+  const t = e.changedTouches[0];
+  touchClone.style.display = 'none';
+  const target = document.elementFromPoint(t.clientX, t.clientY)?.closest('.plan-seat:not(.inactive)');
+  touchClone.remove(); touchClone = null;
+  sourceEl.classList.remove('dragging');
+  planRoom.classList.remove('drag-active');
+  planRoom.querySelectorAll('.drag-over').forEach(s => s.classList.remove('drag-over'));
 
   if (target && touchStudId !== null) {
     const seatId = parseInt(target.dataset.seatId);
-    if (!isNaN(seatId)) assignStudentToSeat(touchStudId, seatId);
+    if (!isNaN(seatId)) doAssign(touchStudId, seatId);
   }
   touchStudId = null;
 }
 
-function cleanupTouch(el) {
-  touchClone?.remove();
-  touchClone = null;
-  el.classList.remove('dragging');
-}
+// Délégation touch — sidebar (élèves)
+document.getElementById('studentList').addEventListener('touchstart', e => {
+  const el = e.target.closest('.plan-student');
+  if (!el) return;
+  touchStart(e, parseInt(el.dataset.studentId), el);
+}, { passive: true });
 
-function clearDragOverAll() {
-  document.querySelectorAll('.plan-seat.drag-over').forEach(s => s.classList.remove('drag-over'));
-}
+document.getElementById('studentList').addEventListener('touchmove', e => {
+  if (touchClone) touchMove(e);
+}, { passive: false });
 
-/* ─────────────────────────────────────────────
-   INITIALISATION au chargement de la page
-───────────────────────────────────────────── */
-document.addEventListener('DOMContentLoaded', () => {
+document.getElementById('studentList').addEventListener('touchend', e => {
+  const el = e.target.closest('.plan-student') ?? document.querySelector('.plan-student.dragging');
+  if (el) touchEnd(e, el);
+});
 
-  // Sidebar : élèves draggables (souris + touch)
-  document.querySelectorAll('.plan-student').forEach(el => {
-    initStudentDrag(el);
-    initStudentTouch(el);
-  });
+// Délégation touch — grille (sièges occupés → siège→siège)
+planRoom.addEventListener('touchstart', e => {
+  const seat = e.target.closest('.plan-seat.assigned');
+  if (!seat) return;
+  const seatId = parseInt(seat.dataset.seatId);
+  const studId = assignments[seatId];
+  if (!studId) return;
+  touchStart(e, studId, seat);
+}, { passive: true });
 
-  // Sièges : drop targets (souris)
-  document.querySelectorAll('.plan-seat:not(.inactive)').forEach(el => {
-    initSeatDrop(el);
-    // Si le siège est déjà occupé au chargement → aussi draggable
-    const seatId  = parseInt(el.dataset.seatId);
-    const studId  = assignments[seatId];
-    if (studId) {
-      initSeatDrag(el, studId);
-      initSeatTouch(el, studId);
-    }
-  });
+planRoom.addEventListener('touchmove', e => {
+  if (touchClone) touchMove(e);
+}, { passive: false });
+
+planRoom.addEventListener('touchend', e => {
+  const seat = e.target.closest('.plan-seat') ?? planRoom.querySelector('.plan-seat.dragging');
+  if (seat) touchEnd(e, seat);
+});
+
+planRoom.addEventListener('touchcancel', e => {
+  const seat = planRoom.querySelector('.plan-seat.dragging');
+  if (touchClone) { touchClone.remove(); touchClone = null; }
+  if (seat) seat.classList.remove('dragging');
+  planRoom.classList.remove('drag-active');
+  planRoom.querySelectorAll('.drag-over').forEach(s => s.classList.remove('drag-over'));
+  touchStudId = null;
+});
+
+// Initialisation draggable des sièges déjà occupés au chargement
+planRoom.querySelectorAll('.plan-seat.assigned').forEach(el => {
+  el.draggable = true;
 });
 </script>
+<?php
+$content = ob_get_clean();
+require __DIR__ . '/../layouts/app.php';
