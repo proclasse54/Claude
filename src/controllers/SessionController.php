@@ -294,77 +294,70 @@ class SessionController
         $content = ob_get_clean();
         require ROOT . '/views/layouts/app.php';
     }
+public function apiMoveSeat(array $p): void
+{
+    $data = json_decode(file_get_contents('php://input'), true);
 
-    public function apiMoveSeat(array $p): void
-    {
-        $data = json_decode(file_get_contents('php://input'), true);
+    $studentId    = (int)($data['student_id']    ?? 0);
+    $sourceSeatId = (int)($data['source_seat_id'] ?? 0);
+    $targetSeatId = (int)($data['target_seat_id'] ?? 0);
+    $sessionId    = (int)$p['id'];
 
-        $studentId    = (int)($data['student_id']    ?? 0);
-        $sourceSeatId = (int)($data['source_seat_id'] ?? 0);
-        $targetSeatId = (int)($data['target_seat_id'] ?? 0);
-        $sessionId    = (int)$p['id'];
+    if (!$studentId || !$sourceSeatId || !$targetSeatId || !$sessionId) {
+        Response::json(['error' => 'Paramètres manquants'], 400);
+        return;
+    }
 
-        if (!$studentId || !$sourceSeatId || !$targetSeatId || !$sessionId) {
-            Response::json(['error' => 'Paramètres manquants'], 400);
-            return;
-        }
+    $db = Database::get();
 
-        $db = Database::get();
+    // Récupérer le plan_id de la séance
+    $stmt = $db->prepare("SELECT plan_id FROM sessions WHERE id = ?");
+    $stmt->execute([$sessionId]);
+    $planId = (int)$stmt->fetchColumn();
 
-        // Récupérer le plan_id de la séance (comme dans live())
-        $planId = (int)$db->prepare("SELECT plan_id FROM sessions WHERE id = ?")
-            ->execute([$sessionId]) 
-            ?: null;
+    if (!$planId) {
+        Response::json(['error' => 'Séance introuvable'], 404);
+        return;
+    }
 
-        // Correction : utiliser fetch() après execute
-        $stmt = $db->prepare("SELECT plan_id FROM sessions WHERE id = ?");
-        $stmt->execute([$sessionId]);
-        $planId = (int)$stmt->fetchColumn();
+    try {
+        $db->beginTransaction();
 
-        if (!$planId) {
-            Response::json(['error' => 'Séance introuvable'], 404);
-            return;
-        }
+        // Élève éventuellement présent sur la cible (pour permutation)
+        $stmt = $db->prepare("
+            SELECT student_id FROM seating_assignments
+            WHERE seat_id = ? AND plan_id = ?
+        ");
+        $stmt->execute([$targetSeatId, $planId]);
+        $row = $stmt->fetch();
+        $targetStudentId = $row ? (int)$row['student_id'] : null;
 
-        try {
-            $db->beginTransaction();
+        // Déplacer l'élève source → cible
+        $db->prepare("
+            UPDATE seating_assignments
+            SET seat_id = ?
+            WHERE seat_id = ? AND plan_id = ? AND student_id = ?
+        ")->execute([$targetSeatId, $sourceSeatId, $planId, $studentId]);
 
-            // Élève éventuellement présent sur la cible (pour permutation)
-            $stmt = $db->prepare("
-                SELECT student_id FROM seating_assignments
-                WHERE seat_id = ? AND plan_id = ?
-            ");
-            $stmt->execute([$targetSeatId, $planId]);
-            $row = $stmt->fetch();
-            $targetStudentId = $row ? (int)$row['student_id'] : null;
-
-            // Déplacer l'élève source → cible
+        // Permutation si nécessaire
+        if ($targetStudentId) {
             $db->prepare("
                 UPDATE seating_assignments
                 SET seat_id = ?
                 WHERE seat_id = ? AND plan_id = ? AND student_id = ?
-            ")->execute([$targetSeatId, $sourceSeatId, $planId, $studentId]);
-
-            // Si un élève était sur la cible → le mettre sur la source (permutation)
-            if ($targetStudentId) {
-                $db->prepare("
-                    UPDATE seating_assignments
-                    SET seat_id = ?
-                    WHERE seat_id = ? AND plan_id = ? AND student_id = ?
-                ")->execute([$sourceSeatId, $targetSeatId, $planId, $targetStudentId]);
-            }
-
-            $db->commit();
-
-            Response::json([
-                'ok'                 => true,
-                'swapped_student_id' => $targetStudentId,
-            ]);
-
-        } catch (\Throwable $e) {
-            if ($db->inTransaction()) $db->rollBack();
-            Response::json(['error' => $e->getMessage()], 500);
+            ")->execute([$sourceSeatId, $targetSeatId, $planId, $targetStudentId]);
         }
-    }
 
+        $db->commit();
+
+        Response::json([
+            'ok'                 => true,
+            'swapped_student_id' => $targetStudentId,
+        ]);
+
+    } catch (\Throwable $e) {
+        if ($db->inTransaction()) $db->rollBack();
+        Response::json(['error' => $e->getMessage()], 500);
+    }
+}
 }
