@@ -45,7 +45,25 @@ ob_start();
                 data-student-id="<?= $seat['student_id'] ?? '' ?>"
                 onclick="<?= $seat['student_id'] ? "openTagMenu({$seat['id']}, {$seat['student_id']}, '" . htmlspecialchars(addslashes($seat['last_name'] . ' ' . $seat['first_name'])) . "')" : 'void(0)' ?>">
               <?php if ($seat['student_id']): ?>
-                <div class="seat-name"><?= htmlspecialchars($seat['first_name']) ?><br><small><?= htmlspecialchars($seat['last_name']) ?></small></div>
+                <?php
+                  $photoUrl = getPhotoUrl(
+                      $session['class_name'],   // ex: "3A"
+                      $seat['last_name'],       // ex: "BOULON"  (déjà sans accents depuis Pronote)
+                      $seat['first_name']       // ex: "Éloïse"  ← accents gérés par removeAccents()
+                  );
+                ?>
+                <?php if ($photoUrl): ?>
+                  <img src="<?= htmlspecialchars($photoUrl) ?>"
+                      alt="<?= htmlspecialchars($seat['first_name'] . ' ' . $seat['last_name']) ?>"
+                      class="seat-photo" loading="lazy">
+                <?php else: ?>
+                  <div class="seat-photo-placeholder">
+                    <?= htmlspecialchars(mb_substr($seat['first_name'], 0, 1) . mb_substr($seat['last_name'], 0, 1)) ?>
+                  </div>
+                <?php endif; ?>
+                <div class="seat-name"><?= htmlspecialchars($seat['first_name']) ?><br>
+                  <small><?= htmlspecialchars($seat['last_name']) ?></small>
+                </div>
                 <div class="seat-tags" id="tags-<?= $seat['student_id'] ?>">
                   <?php foreach ($obsMap[$seat['student_id']] ?? [] as $o): ?>
                   <span class="tag-chip" style="background:<?= htmlspecialchars($o['color'] ?? '#888') ?>"

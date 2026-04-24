@@ -3,6 +3,10 @@ declare(strict_types=1);
 
 define('ROOT', dirname(__DIR__));
 
+
+require ROOT . '/../src/Photo.php';
+
+
 // ── Config ────────────────────────────────────────────────────
 $appCfg = require ROOT . '/config/app.php';
 date_default_timezone_set($appCfg['timezone'] ?? 'Europe/Paris');
