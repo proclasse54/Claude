@@ -634,7 +634,7 @@ emoji-picker {
 
 
 .seat-photo {
-    width: 100%;
+    width: 50%;
     aspect-ratio: 1;
     object-fit: cover;
     border-radius: var(--radius-sm, 4px);

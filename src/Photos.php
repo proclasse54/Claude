@@ -23,7 +23,7 @@ function getPhotoUrl(string $classe, string $nom, string $prenom): ?string {
     $prenomFichier = removeAccents($prenom);
     
     // Chemin absolu réel sur le serveur
-    $cheminAbsolu = '/var/www/sub-domains/proclasse/data/photos_eleves/' 
+    $cheminAbsolu = '/var/www/sub-domains/proclasse/public/data/photos_eleves/' 
                     . "{$classe}.{$nom}.{$prenomFichier}.jpg";
     
     // URL publique retournée au navigateur
