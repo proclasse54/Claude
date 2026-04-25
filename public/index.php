@@ -39,13 +39,13 @@ if ($appCfg['debug'] ?? false) {
 $router = new Router();
 
 // Salles
-$router->add('GET',    '/rooms',                fn()  => (new RoomController)->index());
-$router->add('GET',    '/rooms/create',         fn()  => (new RoomController)->create());
-$router->add('GET',    '/rooms/{id}/edit',      fn($p)=> (new RoomController)->edit($p));
-$router->add('POST',   '/api/rooms',            fn()  => (new RoomController)->apiSave([]));
-$router->add('POST',   '/api/rooms/{id}',       fn($p)=> (new RoomController)->apiSave($p));
-$router->add('GET',    '/api/rooms/{id}',       fn($p)=> (new RoomController)->apiGet($p));
-$router->add('DELETE', '/api/rooms/{id}',       fn($p)=> (new RoomController)->apiDelete($p));
+$router->add('GET',    '/rooms',                            fn()  => (new RoomController)->index());
+$router->add('GET',    '/rooms/create',                     fn()  => (new RoomController)->create());
+$router->add('GET',    '/rooms/{id}/edit',                  fn($p)=> (new RoomController)->edit($p));
+$router->add('POST',   '/api/rooms',                        fn()  => (new RoomController)->apiSave([]));
+$router->add('POST',   '/api/rooms/{id}',                   fn($p)=> (new RoomController)->apiSave($p));
+$router->add('GET',    '/api/rooms/{id}',                   fn($p)=> (new RoomController)->apiGet($p));
+$router->add('DELETE', '/api/rooms/{id}',                   fn($p)=> (new RoomController)->apiDelete($p));
 
 // Classes
 $router->add('GET',    '/classes',                          fn()  => (new ClassController)->index());
@@ -79,8 +79,12 @@ $router->add('POST',   '/api/tags',                         fn()  => (new Sessio
 $router->add('DELETE', '/api/tags/{id}',                    fn($p)=> (new SessionController)->apiDeleteTag($p));
 
 // Infos élève (modale live)
-$router->add('GET',    '/api/students/{id}',                             fn($p)=> (new StudentController)->apiGet($p));
+$router->add('GET',    '/api/students/{id}',                fn($p)=> (new StudentController)->apiGet($p));
 $router->add('DELETE', '/api/sessions/{id}/remove-student/{student_id}', fn($p)=> (new SessionController)->apiRemoveStudent($p));
+
+// Imports (pronote):
+$router->add('GET',     '/import',                          fn($p) => (new ImportController)->index($p));
+$router->add('POST',    '/import/photos',                   fn($p) => (new ImportController)->photos($p));
 
 // Racine
 $router->add('GET',     '/',                                fn()  => Response::redirect('/sessions'));
