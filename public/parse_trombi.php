@@ -150,7 +150,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['pdf'])) {
             $nomFichier    = nettoyerChaine(mb_strtoupper($e['nom'], 'UTF-8'));
             $prenomFichier = nettoyerChaine($e['prenom']);
             $dest = $outputDir . $classeFichier . '.' . $nomFichier . '.' . $prenomFichier . '.jpg';
-            /*file_put_contents($dest, rognerPortrait($e['imageData'])); //On ne rogne plus la photo ici*/
             file_put_contents($dest, $e['imageData']); 
         }
     }
@@ -201,39 +200,6 @@ function nettoyerChaine(string $str): string
     $str = preg_replace('/\s+/', '-', trim($str));
     return preg_replace('/[^a-zA-Z0-9\-]/', '', $str);
 }
-
-/**
- * Rogne les marges de la photo portrait (cadrage resserré sur le visage)
- */
-/*function rognerPortrait(string $imageData): string
-{
-    $img = imagecreatefromstring($imageData);
-    if (!$img) return $imageData;
-
-    $w = imagesx($img);
-    $h = imagesy($img);
-
-    $margeHaut   = (int)($h * 0.30);
-    $margeBas    = (int)($h * 0.20);
-    $margeGauche = (int)($w * 0.20);
-    $margeDroite = (int)($w * 0.20);
-
-    $nw = $w - $margeGauche - $margeDroite;
-    $nh = $h - $margeHaut   - $margeBas;
-
-    if ($nw <= 0 || $nh <= 0) return $imageData;
-
-    $crop = imagecreatetruecolor($nw, $nh);
-    imagecopyresampled($crop, $img, 0, 0, $margeGauche, $margeHaut, $nw, $nh, $nw, $nh);
-
-    ob_start();
-    imagejpeg($crop, null, 90);
-    $output = ob_get_clean();
-
-    imagedestroy($img);
-    imagedestroy($crop);
-    return $output;
-}*/
 
 ?>
 <!DOCTYPE html>

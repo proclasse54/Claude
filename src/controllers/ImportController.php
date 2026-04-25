@@ -12,6 +12,12 @@ class ImportController
     // POST /import/photos → extraction PDF trombinoscope (logique déplacée depuis parse_trombi.php)
     public function photos(array $p): void
     {
+        // Fichier absent à cause d'un dépassement de limite PHP
+        if (empty($_FILES) && (int)$_SERVER['CONTENT_LENGTH'] > 0) {
+            Response::json(['error' => 'Fichier trop volumineux (limite serveur dépassée)'], 413);
+            return;
+        }
+
         if (empty($_FILES['pdf']['tmp_name']) || $_FILES['pdf']['error'] !== UPLOAD_ERR_OK) {
             Response::json(['error' => 'Fichier PDF manquant ou invalide'], 400);
             return;

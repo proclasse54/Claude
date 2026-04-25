@@ -100,7 +100,12 @@ function rognerPortrait(string $imageData, array $crop): string
     $canvas = imagecreatetruecolor($nw, $nh);
     imagecopyresampled($canvas, $img, 0, 0, $x, $y, $nw, $nh, $nw, $nh);
 
-    ob_start(); imagejpeg($canvas, null, 95); $out = ob_get_clean();
-    imagedestroy($img); imagedestroy($canvas);
+    $tmp = tempnam(sys_get_temp_dir(), 'photo_');
+    imagejpeg($canvas, $tmp, 95);
+    $out = file_get_contents($tmp);
+    unlink($tmp);
+
+    imagedestroy($img);
+    imagedestroy($canvas);
     return $out;
 }
