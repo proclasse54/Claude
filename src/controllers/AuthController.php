@@ -25,39 +25,33 @@ class AuthController
         if ($email === '' || $password === '') {
             $_SESSION['login_error'] = 'Veuillez remplir tous les champs.';
             Response::redirect('/login');
+            return;
         }
 
-        $pdo  = Database::get();
-        $stmt = $pdo->prepare('SELECT * FROM users WHERE email = ? AND is_active = 1 LIMIT 1');
-        $stmt->execute([$email]);
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        // Auth::login() gère la vérification BDD, le log et l'ouverture de session
+        $ok = Auth::login($email, $password);
 
-        if (!$user || !password_verify($password, $user['password_hash'])) {
-            Logger::warning('auth', 'login_failed', ['email' => $email]);
+        if (!$ok) {
             $_SESSION['login_error'] = 'Email ou mot de passe incorrect.';
             Response::redirect('/login');
+            return;
         }
 
-        // Succès : on ouvre la session
-        Auth::login((int) $user['id'], $user['role']);
-        Logger::info('auth', 'login_ok', ['email' => $email]);
-
-        $redirect = $_SESSION['after_login'] ?? '/';
-        unset($_SESSION['after_login']);
+        $redirect = $_SESSION['_redirect_after_login'] ?? '/';
+        unset($_SESSION['_redirect_after_login']);
         Response::redirect($redirect);
     }
 
     // ── GET /logout ──────────────────────────────────────────
     public function logout(): void
     {
-        Logger::info('auth', 'logout', ['user_id' => Auth::user()]);
         Auth::logout();
         Response::redirect('/login');
     }
 
-    // ── GET /install ─────────────────────────────────────────
+    // ── GET|POST /install ────────────────────────────────────
     // Crée le premier compte admin si aucun utilisateur n'existe encore.
-    // À bloquer (ex : .htaccess ou config) une fois l'installation faite.
+    // À bloquer (à supprimer ou .htaccess) une fois l'installation faite.
     public function install(): void
     {
         $pdo = Database::get();
@@ -96,7 +90,6 @@ class AuthController
                 $message = 'Les mots de passe ne correspondent pas.';
                 $type    = 'error';
             } else {
-                // username = partie locale de l'email (avant @)
                 $username = explode('@', $email)[0];
                 $hash = password_hash($password, PASSWORD_BCRYPT);
                 $pdo->prepare(
