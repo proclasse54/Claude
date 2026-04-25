@@ -96,11 +96,13 @@ class AuthController
                 $message = 'Les mots de passe ne correspondent pas.';
                 $type    = 'error';
             } else {
+                // username = partie locale de l'email (avant @)
+                $username = explode('@', $email)[0];
                 $hash = password_hash($password, PASSWORD_BCRYPT);
                 $pdo->prepare(
-                    'INSERT INTO users (email, password_hash, role, is_active, created_at)
-                     VALUES (?, ?, \'admin\', 1, NOW())'
-                )->execute([$email, $hash]);
+                    'INSERT INTO users (username, email, password_hash, role, is_active, created_at)
+                     VALUES (?, ?, ?, \'admin\', 1, NOW())'
+                )->execute([$username, $email, $hash]);
                 Logger::info('install', 'admin_created', ['email' => $email]);
                 $message = 'Compte admin créé ! Vous pouvez maintenant <a href="/login">vous connecter</a>.';
                 $type    = 'success';
