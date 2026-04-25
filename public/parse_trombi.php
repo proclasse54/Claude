@@ -116,7 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['pdf'])) {
                 continue;
             }
 
-            $classe    = preg_replace('/\s+/u', '', mb_strtoupper($lignes[0], 'UTF-8'));
+            $classe    = preg_replace('/\s+/u', '-', mb_strtoupper($lignes[0], 'UTF-8'));
             [$nom, $prenom] = splitNomPrenom($lignes[1]);
 
             if ($classe === '' || $nom === '' || $prenom === '') {
