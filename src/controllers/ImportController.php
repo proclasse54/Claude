@@ -28,6 +28,10 @@ class ImportController
 
         $data = file_get_contents($_FILES['pdf']['tmp_name']);
 
+
+         $db = Database::get(); 
+
+         
         // ── Décompresser les objets FlateDecode ──────────────────
         $objMap = [];
         preg_match_all(
@@ -110,7 +114,7 @@ class ImportController
 
         // ── Sauvegarder ──────────────────────────────────────────
         $extracted = 0;
-        
+
         foreach ($eleves as $e) {
             $classeFichier = nettoyerChaine($e['classe']);
             $nomFichier    = nettoyerChaine(mb_strtoupper($e['nom'], 'UTF-8'));
@@ -168,33 +172,4 @@ class ImportController
     }
 
 
-
-
-    private static function nettoyerChaine(string $str): string
-    {
-        if (class_exists('Normalizer')) {
-            $str = Normalizer::normalize($str, Normalizer::FORM_D);
-            $str = preg_replace('/\p{Mn}/u', '', $str);
-        } else {
-            $str = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $str);
-        }
-        $str = preg_replace('/\s+/', '-', trim($str));
-        return preg_replace('/[^a-zA-Z0-9\-]/', '', $str);
-    }
-
-    private static function rognerPortrait(string $imageData): string
-    {
-        $img = @imagecreatefromstring($imageData);
-        if (!$img) return $imageData;
-        $w = imagesx($img); $h = imagesy($img);
-        $mH = (int)($h * 0.30); $mB = (int)($h * 0.20);
-        $mG = (int)($w * 0.20); $mD = (int)($w * 0.20);
-        $nw = $w - $mG - $mD; $nh = $h - $mH - $mB;
-        if ($nw <= 0 || $nh <= 0) return $imageData;
-        $crop = imagecreatetruecolor($nw, $nh);
-        imagecopyresampled($crop, $img, 0, 0, $mG, $mH, $nw, $nh, $nw, $nh);
-        ob_start(); imagejpeg($crop, null, 90); $out = ob_get_clean();
-        imagedestroy($img); imagedestroy($crop);
-        return $out;
-    }
 }
