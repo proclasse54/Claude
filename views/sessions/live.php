@@ -109,6 +109,8 @@ ob_start();
   </div>
 </div>
 
+
+
 <script>
 const SESSION_ID = <?= (int)$session['id'] ?>;
 let currentStudentId = null;
@@ -505,6 +507,39 @@ liveRoom.addEventListener('touchcancel', () => {
   touchIsDrag = false;
 });
 </script>
+
+
+
+<!-- Modale infos élève -->
+<div id="studentModal" class="student-modal-overlay" hidden
+     aria-modal="true" role="dialog" aria-labelledby="modalStudentName">
+  <div class="student-modal">
+    <button class="student-modal-close" id="modalClose" aria-label="Fermer">✕</button>
+    <div class="student-modal-header">
+      <div class="student-modal-avatar" id="modalAvatar"></div>
+      <div>
+        <div class="student-modal-name" id="modalStudentName"></div>
+        <div class="student-modal-class" id="modalClass"></div>
+      </div>
+    </div>
+    <div class="student-modal-body" id="modalBody">
+      <div class="student-modal-loading">Chargement…</div>
+    </div>
+    <div class="student-modal-footer">
+      <button class="btn btn-danger btn-sm" id="modalRemoveBtn">
+        🗑 Retirer du plan de salle
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Exposer les variables globales pour app.js
+window.SESSION_ID      = <?= (int)$session['id'] ?>;
+window.seatStudentMap  = seatStudentMap;
+</script>
+
+
 <?php
 $content = ob_get_clean();
 ?>

@@ -367,4 +367,35 @@ class SessionController
             Response::json(['error' => $e->getMessage()], 500);
         }
     }
+
+    public function apiRemoveStudent(array $p): void
+    {
+        $sessionId = (int)$p['id'];
+        $studentId = (int)$p['student_id'];
+
+        $db = Database::get();
+
+        $stmt = $db->prepare("SELECT plan_id FROM sessions WHERE id = ?");
+        $stmt->execute([$sessionId]);
+        $planId = (int)$stmt->fetchColumn();
+
+        if (!$planId) {
+            Response::json(['error' => 'Séance introuvable'], 404);
+            return;
+        }
+
+        $stmt = $db->prepare("
+            DELETE FROM seating_assignments
+            WHERE plan_id = ? AND student_id = ?
+        ");
+        $stmt->execute([$planId, $studentId]);
+
+        if ($stmt->rowCount() === 0) {
+            Response::json(['error' => 'Affectation introuvable'], 404);
+            return;
+        }
+
+        Response::json(['ok' => true]);
+    }
+
 }

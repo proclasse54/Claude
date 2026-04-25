@@ -78,6 +78,10 @@ $router->add('GET',    '/api/tags',                         fn()  => (new Sessio
 $router->add('POST',   '/api/tags',                         fn()  => (new SessionController)->apiSaveTag());
 $router->add('DELETE', '/api/tags/{id}',                    fn($p)=> (new SessionController)->apiDeleteTag($p));
 
+// Infos élève (modale live)
+$router->add('GET',    '/api/students/{id}',                             fn($p)=> (new StudentController)->apiGet($p));
+$router->add('DELETE', '/api/sessions/{id}/remove-student/{student_id}', fn($p)=> (new SessionController)->apiRemoveStudent($p));
+
 // Racine
 $router->add('GET',     '/',                                fn()  => Response::redirect('/sessions'));
 
