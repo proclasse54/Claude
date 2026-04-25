@@ -7,7 +7,7 @@ require ROOT . '/src/Photos.php';
 require_once ROOT . '/src/Auth.php';
 require_once ROOT . '/src/Logger.php';
 
-// ── Config ──────────────────────────────────────────────
+// ── Config ────────────────────────────────────────────────
 $appCfg = require ROOT . '/config/app.php';
 date_default_timezone_set($appCfg['timezone'] ?? 'Europe/Paris');
 
@@ -43,7 +43,7 @@ if ($appCfg['debug'] ?? false) {
 // ── Session ─────────────────────────────────────────────
 Auth::start();
 
-// ── Routes PUBLIQUES (sans Auth::check) ──────────────────
+// ── Routes PUBLIQUES (sans Auth::check) ────────────────────
 // /login, /logout et /install sont gérées par AuthController.
 // /photo est publique : les photos élèves peuvent être affichées sans login
 // (la sécurité repose sur l'URL non-devinable Classe.Nom.Prenom.jpg)
@@ -74,6 +74,14 @@ $router->add('POST', '/login',   fn() => (new AuthController)->loginSubmit());
 $router->add('GET',  '/logout',  fn() => (new AuthController)->logout());
 $router->add('GET',  '/install', fn() => (new AuthController)->install());
 $router->add('POST', '/install', fn() => (new AuthController)->install());
+
+// Admin
+$router->add('GET',    '/admin/users',        fn()  => (new AdminController)->users());
+$router->add('POST',   '/admin/users',        fn()  => (new AdminController)->userCreate());
+$router->add('POST',   '/admin/users/{id}',   fn($p)=> (new AdminController)->userUpdate($p));
+$router->add('DELETE', '/admin/users/{id}',   fn($p)=> (new AdminController)->userDelete($p));
+$router->add('GET',    '/admin/logs',         fn()  => (new AdminController)->logs());
+$router->add('POST',   '/admin/logs/purge',   fn()  => (new AdminController)->logsPurge());
 
 // Salles
 $router->add('GET',    '/rooms',                            fn()  => (new RoomController)->index());
@@ -133,5 +141,5 @@ $router->add('GET',     '/',                                fn()  => Response::r
 // Tags
 $router->add('GET',    '/tags',                             fn()  => (new SessionController)->tagsIndex());
 
-// ── Dispatch ─────────────────────────────────────────────
+// ── Dispatch ───────────────────────────────────────────────
 $router->dispatch($method, $uri);
