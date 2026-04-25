@@ -206,11 +206,12 @@ document.getElementById('studentsForm').addEventListener('submit', async e => {
   btn.disabled = true; btn.textContent = '⏳ Import en cours…';
   res.hidden = true;
 
-  const fd = new FormData();
-  fd.append('csv', new Blob([csv], {type:'text/plain'}), 'eleves.tsv');
-
-  const data = await fetch('/api/classes/import-csv', { method:'POST', body: fd })
-    .then(r => r.json()).catch(() => ({error:'Erreur réseau'}));
+  // ✅ Même appel que show.php : JSON + route /import-paste sans class_id
+  const data = await fetch('/api/classes/0/import-paste', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ data: csv })
+  }).then(r => r.json()).catch(() => ({ error: 'Erreur réseau' }));
 
   if (data.ok) {
     let msg = `✅ <strong>${data.inserted}</strong> élève(s) importé(s)`;
@@ -218,8 +219,10 @@ document.getElementById('studentsForm').addEventListener('submit', async e => {
     if (data.skipped)         msg += ` · ${data.skipped} ignoré(s)`;
     showResult(res, 'success', msg);
     if (data.errors?.length) {
-      res.innerHTML += `<details style="margin-top:.5rem"><summary>⚠️ ${data.errors.length} avertissement(s)</summary>
-        ${data.errors.map(e => `<div class="import-error-line">• ${e}</div>`).join('')}</details>`;
+      res.innerHTML += `<details style="margin-top:.5rem">
+        <summary>⚠️ ${data.errors.length} avertissement(s)</summary>
+        ${data.errors.map(e => `<div class="import-error-line">• ${e}</div>`).join('')}
+      </details>`;
     }
   } else {
     showResult(res, 'error', '❌ ' + (data.error ?? 'Erreur inconnue'));

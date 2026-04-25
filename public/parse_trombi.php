@@ -150,7 +150,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['pdf'])) {
             $nomFichier    = nettoyerChaine(mb_strtoupper($e['nom'], 'UTF-8'));
             $prenomFichier = nettoyerChaine($e['prenom']);
             $dest = $outputDir . $classeFichier . '.' . $nomFichier . '.' . $prenomFichier . '.jpg';
-            file_put_contents($dest, rognerPortrait($e['imageData']));
+            /*file_put_contents($dest, rognerPortrait($e['imageData'])); //On ne rogne plus la photo ici*/
+            file_put_contents($dest, $e['imageData']); 
         }
     }
 }
@@ -204,7 +205,7 @@ function nettoyerChaine(string $str): string
 /**
  * Rogne les marges de la photo portrait (cadrage resserré sur le visage)
  */
-function rognerPortrait(string $imageData): string
+/*function rognerPortrait(string $imageData): string
 {
     $img = imagecreatefromstring($imageData);
     if (!$img) return $imageData;
@@ -232,7 +233,8 @@ function rognerPortrait(string $imageData): string
     imagedestroy($img);
     imagedestroy($crop);
     return $output;
-}
+}*/
+
 ?>
 <!DOCTYPE html>
 <html lang="fr">

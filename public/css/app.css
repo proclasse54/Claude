@@ -634,6 +634,7 @@ emoji-picker {
     object-fit: cover;
     border-radius: var(--radius-sm, 4px);
     display: block;
+    object-position: center 20%; /* remonte vers le haut pour centrer le visage */
 }
 
 .seat-photo-placeholder {

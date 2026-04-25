@@ -115,8 +115,10 @@ class ImportController
             $nomFichier    = self::nettoyerChaine(mb_strtoupper($e['nom'], 'UTF-8'));
             $prenomFichier = self::nettoyerChaine($e['prenom']);
             $dest = $outputDir . $classeFichier . '.' . $nomFichier . '.' . $prenomFichier . '.jpg';
-            $jpg  = self::rognerPortrait($e['imageData']);
-            if ($jpg && file_put_contents($dest, $jpg) !== false) $extracted++;
+            /*$jpg  = self::rognerPortrait($e['imageData']);
+            if ($jpg && file_put_contents($dest, $jpg) !== false) $extracted++;*/ //On ne rogne plus la photo ici
+            if (file_put_contents($dest, $e['imageData']) !== false) $extracted++;
+
         }
 
         Response::json([
