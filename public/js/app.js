@@ -82,39 +82,46 @@ function initStudentModal() {
   function renderModal(s) {
     document.getElementById('modalStudentName').textContent = `${s.first_name} ${s.last_name}`;
     document.getElementById('modalClass').textContent = s.class_name + (s.level ? ' — ' + s.level : '');
+
     const av = document.getElementById('modalAvatar');
     if (modalSeatEl) {
       const img = modalSeatEl.querySelector('.seat-photo');
       if (img) { const c = img.cloneNode(); c.style.cssText = ''; av.appendChild(c); }
       else av.textContent = (s.first_name[0] ?? '') + (s.last_name[0] ?? '');
     }
+
     const fmt = d => { if (!d) return ''; const [y,m,j] = d.split('-'); return `${j}/${m}/${y}`; };
+
     const sections = [
       { titre: 'Identité', champs: [
-        ['Genre',       s.gender === 'M' ? 'Masculin' : s.gender === 'F' ? 'Féminin' : null],
-        ['Naissance',   [s.birthdate ? fmt(s.birthdate) : null, s.birthplace, s.birth_country].filter(Boolean).join(', ') || null],
-        ['Nationalité', s.nationality],
-        ['INE',         s.pronote_id],
-        ['Majeur',      s.is_major ? 'Oui' : null],
+        ['Genre',            s.gender === 'M' ? 'Masculin' : s.gender === 'F' ? 'Féminin' : null],
+        ['Prénom d\'usage',  s.first_name_usage],
+        ['Autres prénoms',   [s.first_name_2, s.first_name_3].filter(Boolean).join(', ') || null],
+        ['Naissance',        [s.birthdate ? fmt(s.birthdate) : null, s.birthplace, s.birth_country].filter(Boolean).join(', ') || null],
+        ['Nationalité',      s.nationality],
+        ['INE',              s.pronote_id],
+        ['Majeur',           s.is_major ? 'Oui' : null],
       ]},
       { titre: 'Contact', champs: [
         ['Email', s.email ? `<a href="mailto:${s.email}">${s.email}</a>` : null],
         ['Tél.',  s.phone],
       ]},
       { titre: 'Scolarité', champs: [
-        ['Formation',       s.formation],
-        ['Régime',          s.regime],
-        ['Prof. principal', s.head_teacher],
-        ['Début scolarité', s.school_start ? fmt(s.school_start) : null],
-        ['Redoublant',      s.is_repeating ? 'Oui' : null],
-        ['Projet accom.',   s.support_project],
-        ['Allergies',       s.allergies],
+        ['Formation',        s.formation],
+        ['Régime',           s.regime],
+        ['Prof. principal',  s.head_teacher],
+        ['Début scolarité',  s.school_start ? fmt(s.school_start) : null],
+        ['Fin scolarité',    s.school_end   ? fmt(s.school_end)   : null],
+        ['Redoublant',       s.is_repeating ? 'Oui' : null],
+        ['Projet accom.',    s.support_project],
+        ['Allergies',        s.allergies],
       ]},
       { titre: 'Groupes & options', champs: [
         ['Groupes', s.groups],
         ['Options', s.options],
       ]},
     ];
+
     let html = '';
     for (const sec of sections) {
       const rows = sec.champs.filter(([,v]) => v)
@@ -125,8 +132,37 @@ function initStudentModal() {
         <table class="modal-table">${rows}</table>
       </div>`;
     }
+
+    // ── Données brutes Pronote (section dépliable) ──────────
+    if (s.pronote_data && s.pronote_data.length > 0) {
+      const rawRows = s.pronote_data
+        .filter(r => r.field_value)
+        .map(r => `<tr><th>${escHtml(r.field_name)}</th><td>${escHtml(r.field_value)}</td></tr>`)
+        .join('');
+
+      if (rawRows) {
+        html += `
+        <div class="modal-section">
+          <details class="modal-details">
+            <summary class="modal-section-title modal-details-summary">
+              <span>Données brutes Pronote</span>
+              <span class="modal-details-icon">＋</span>
+            </summary>
+            <table class="modal-table" style="margin-top:.5rem">${rawRows}</table>
+          </details>
+        </div>`;
+      }
+    }
+
     modalBody.innerHTML = html || '<p style="color:var(--color-text-muted)">Aucune info disponible.</p>';
   }
+
+  function escHtml(str) {
+    return String(str ?? '')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
 
   function closeModal() {
     modal.hidden = true;

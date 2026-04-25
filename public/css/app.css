@@ -805,3 +805,30 @@ emoji-picker {
   font-size: .82rem; font-weight: 600; border: none; cursor: pointer;
 }
 .btn-danger:hover { background: var(--color-error-hover, #7d1e5e); }
+
+
+/* ── Données brutes dépliables ───────────────────────────── */
+.modal-details { border: none; }
+
+.modal-details-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  margin-bottom: 0;
+}
+.modal-details-summary::-webkit-details-marker { display: none; }
+
+.modal-details-icon {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-primary, #01696f);
+  transition: transform .2s;
+  line-height: 1;
+}
+
+details[open] .modal-details-icon {
+  transform: rotate(45deg); /* ＋ → ✕ */
+}
