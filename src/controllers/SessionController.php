@@ -61,7 +61,7 @@ class SessionController
         ");
         $stmtWeek->execute([$weekStart, $weekEnd]);
         $weekSessions = $stmtWeek->fetchAll();
-        $currentWeek  = $weekDate->format('o\-\WW'); // ex: "2025-W36"        
+        $currentWeek  = $weekDate->format('o\-\WW'); // ex: "2025-W36"
 
         $plans = $db->query("
             SELECT sp.*, c.name as class_name, r.name as room_name
@@ -102,16 +102,48 @@ class SessionController
             return;
         }
 
+        // Sièges avec affectation du plan de référence
         $stmtSeats = $db->prepare("
-            SELECT s.*, sa.student_id, st.last_name, st.first_name
+            SELECT s.*, sa.student_id AS plan_student_id,
+                   st.last_name, st.first_name
             FROM seats s
-            LEFT JOIN seating_assignments sa ON sa.seat_id = s.id AND sa.plan_id = ?
+            LEFT JOIN seating_assignments sa
+                   ON sa.seat_id = s.id AND sa.plan_id = ?
             LEFT JOIN students st ON st.id = sa.student_id
             WHERE s.room_id = ?
             ORDER BY s.row_index, s.col_index
         ");
         $stmtSeats->execute([$session['plan_id'], $session['room_id']]);
-        $seats = $stmtSeats->fetchAll();
+        $seatsRaw = $stmtSeats->fetchAll();
+
+        // Overrides de la séance
+        $stmtOv = $db->prepare("
+            SELECT sso.seat_id, sso.student_id AS override_student_id,
+                   st.last_name, st.first_name
+            FROM session_seat_overrides sso
+            LEFT JOIN students st ON st.id = sso.student_id
+            WHERE sso.session_id = ?
+        ");
+        $stmtOv->execute([$p['id']]);
+        $overrides = [];
+        foreach ($stmtOv->fetchAll() as $ov) {
+            $overrides[(int)$ov['seat_id']] = $ov;
+        }
+
+        // Fusionner : l'override prime sur le plan
+        $seats = [];
+        foreach ($seatsRaw as $seat) {
+            $seatId = (int)$seat['id'];
+            if (isset($overrides[$seatId])) {
+                $ov = $overrides[$seatId];
+                $seat['student_id'] = $ov['override_student_id'];  // peut être NULL
+                $seat['last_name']  = $ov['last_name']  ?? null;
+                $seat['first_name'] = $ov['first_name'] ?? null;
+            } else {
+                $seat['student_id'] = $seat['plan_student_id'];
+            }
+            $seats[] = $seat;
+        }
 
         $tags = $db->query("SELECT * FROM tags ORDER BY sort_order")->fetchAll();
 
@@ -381,6 +413,23 @@ class SessionController
         require ROOT . '/views/layouts/app.php';
     }
 
+    /**
+     * POST /api/sessions/:id/move-seat
+     *
+     * Body JSON :
+     *   student_id      : int
+     *   source_seat_id  : int
+     *   target_seat_id  : int
+     *   scope           : 'session' | 'plan'   (défaut : 'session')
+     *
+     * scope=session → écrit uniquement dans session_seat_overrides
+     *                 Les séances passées et futures ne bougent pas.
+     *
+     * scope=plan    → met à jour seating_assignments (plan de référence)
+     *                 + supprime les overrides des séances FUTURES
+     *                   (date >= aujourd'hui, séance courante exclue)
+     *                 Les séances passées (overrides compris) ne bougent pas.
+     */
     public function apiMoveSeat(array $p): void
     {
         $data = json_decode(file_get_contents('php://input'), true);
@@ -389,6 +438,7 @@ class SessionController
         $sourceSeatId = (int)($data['source_seat_id'] ?? 0);
         $targetSeatId = (int)($data['target_seat_id'] ?? 0);
         $sessionId    = (int)$p['id'];
+        $scope        = ($data['scope'] ?? 'session') === 'plan' ? 'plan' : 'session';
 
         if (!$studentId || !$sourceSeatId || !$targetSeatId || !$sessionId) {
             Response::json(['error' => 'Paramètres manquants'], 400);
@@ -397,54 +447,110 @@ class SessionController
 
         $db = Database::get();
 
-        $stmt = $db->prepare("SELECT plan_id FROM sessions WHERE id = ?");
+        // Récupérer plan_id + date de la séance
+        $stmt = $db->prepare("SELECT plan_id, `date` FROM sessions WHERE id = ?");
         $stmt->execute([$sessionId]);
-        $planId = (int)$stmt->fetchColumn();
+        $session = $stmt->fetch();
 
-        if (!$planId) {
+        if (!$session) {
             Response::json(['error' => 'Séance introuvable'], 404);
             return;
         }
 
+        $planId      = (int)$session['plan_id'];
+        $sessionDate = $session['date'];
+
         try {
             $db->beginTransaction();
 
-            // Qui est sur la cible ?
-            $stmt = $db->prepare("
-                SELECT id, student_id FROM seating_assignments
-                WHERE seat_id = ? AND plan_id = ?
-            ");
-            $stmt->execute([$targetSeatId, $planId]);
-            $targetRow = $stmt->fetch();
-            $targetStudentId  = $targetRow ? (int)$targetRow['student_id'] : null;
-            $targetAssignId   = $targetRow ? (int)$targetRow['id'] : null;
+            if ($scope === 'session') {
+                // --------------------------------------------------
+                // Scope SESSION : overrides uniquement
+                // --------------------------------------------------
 
-            // Étape 1 : supprimer l'affectation cible pour libérer seat_id (contourne NOT NULL)
-            if ($targetStudentId) {
+                // Qui est actuellement sur la cible pour cette séance ?
+                // (override s'il existe, sinon affectation du plan)
+                $stmtTgt = $db->prepare("
+                    SELECT COALESCE(sso.student_id, sa.student_id) AS current_student_id
+                    FROM seats s
+                    LEFT JOIN session_seat_overrides sso
+                           ON sso.seat_id = s.id AND sso.session_id = ?
+                    LEFT JOIN seating_assignments sa
+                           ON sa.seat_id = s.id AND sa.plan_id = ?
+                    WHERE s.id = ?
+                ");
+                $stmtTgt->execute([$sessionId, $planId, $targetSeatId]);
+                $targetStudentId = $stmtTgt->fetchColumn(); // peut être false/null
+                $targetStudentId = $targetStudentId ? (int)$targetStudentId : null;
+
+                // UPSERT override source → vide (ou vers l'élève qui était sur la cible)
                 $db->prepare("
-                    DELETE FROM seating_assignments WHERE id = ?
-                ")->execute([$targetAssignId]);
-            }
-
-            // Étape 2 : déplacer la source → cible
-            $db->prepare("
-                UPDATE seating_assignments
-                SET seat_id = ?
-                WHERE seat_id = ? AND plan_id = ? AND student_id = ?
-            ")->execute([$targetSeatId, $sourceSeatId, $planId, $studentId]);
-
-            // Étape 3 : recréer l'affectation de l'ancien élève cible sur la source
-            if ($targetStudentId) {
-                $db->prepare("
-                    INSERT INTO seating_assignments (plan_id, seat_id, student_id)
+                    INSERT INTO session_seat_overrides (session_id, seat_id, student_id)
                     VALUES (?, ?, ?)
-                ")->execute([$planId, $sourceSeatId, $targetStudentId]);
+                    ON DUPLICATE KEY UPDATE student_id = VALUES(student_id)
+                ")->execute([$sessionId, $sourceSeatId, $targetStudentId]);
+
+                // UPSERT override cible → élève déplacé
+                $db->prepare("
+                    INSERT INTO session_seat_overrides (session_id, seat_id, student_id)
+                    VALUES (?, ?, ?)
+                    ON DUPLICATE KEY UPDATE student_id = VALUES(student_id)
+                ")->execute([$sessionId, $targetSeatId, $studentId]);
+
+            } else {
+                // --------------------------------------------------
+                // Scope PLAN : modifier seating_assignments
+                // + purger les overrides des séances futures
+                // --------------------------------------------------
+
+                // Qui est sur la cible dans le plan ?
+                $stmtTgt = $db->prepare("
+                    SELECT id, student_id FROM seating_assignments
+                    WHERE seat_id = ? AND plan_id = ?
+                ");
+                $stmtTgt->execute([$targetSeatId, $planId]);
+                $targetRow       = $stmtTgt->fetch();
+                $targetStudentId = $targetRow ? (int)$targetRow['student_id'] : null;
+                $targetAssignId  = $targetRow ? (int)$targetRow['id']         : null;
+
+                // Supprimer l'affectation cible pour libérer la contrainte UNIQUE
+                if ($targetStudentId) {
+                    $db->prepare("DELETE FROM seating_assignments WHERE id = ?")
+                       ->execute([$targetAssignId]);
+                }
+
+                // Déplacer source → cible
+                $db->prepare("
+                    UPDATE seating_assignments
+                    SET seat_id = ?
+                    WHERE seat_id = ? AND plan_id = ? AND student_id = ?
+                ")->execute([$targetSeatId, $sourceSeatId, $planId, $studentId]);
+
+                // Remettre l'ancien élève de la cible sur la source
+                if ($targetStudentId) {
+                    $db->prepare("
+                        INSERT INTO seating_assignments (plan_id, seat_id, student_id)
+                        VALUES (?, ?, ?)
+                    ")->execute([$planId, $sourceSeatId, $targetStudentId]);
+                }
+
+                // Purger les overrides des séances FUTURES (date >= aujourd'hui)
+                // sur ces deux sièges, sauf la séance courante
+                $db->prepare("
+                    DELETE sso FROM session_seat_overrides sso
+                    JOIN sessions se ON se.id = sso.session_id
+                    WHERE sso.seat_id IN (?, ?)
+                      AND se.plan_id = ?
+                      AND se.date >= CURDATE()
+                      AND se.id != ?
+                ")->execute([$sourceSeatId, $targetSeatId, $planId, $sessionId]);
             }
 
             $db->commit();
 
             Response::json([
                 'ok'                 => true,
+                'scope'              => $scope,
                 'swapped_student_id' => $targetStudentId,
             ]);
 
@@ -470,16 +576,32 @@ class SessionController
             return;
         }
 
-        $stmt = $db->prepare("
-            DELETE FROM seating_assignments
-            WHERE plan_id = ? AND student_id = ?
+        // Retirer via override (siège vide pour cette séance uniquement)
+        // Chercher le siège occupé par cet élève (override ou plan)
+        $stmtSeat = $db->prepare("
+            SELECT COALESCE(sso.seat_id, sa.seat_id) AS seat_id
+            FROM students st
+            LEFT JOIN session_seat_overrides sso
+                   ON sso.student_id = st.id AND sso.session_id = ?
+            LEFT JOIN seating_assignments sa
+                   ON sa.student_id = st.id AND sa.plan_id = ?
+            WHERE st.id = ?
+            LIMIT 1
         ");
-        $stmt->execute([$planId, $studentId]);
+        $stmtSeat->execute([$sessionId, $planId, $studentId]);
+        $seatId = $stmtSeat->fetchColumn();
 
-        if ($stmt->rowCount() === 0) {
-            Response::json(['error' => 'Affectation introuvable'], 404);
+        if (!$seatId) {
+            Response::json(['error' => 'Élève non placé dans cette séance'], 404);
             return;
         }
+
+        // Override : siège vide pour cette séance
+        $db->prepare("
+            INSERT INTO session_seat_overrides (session_id, seat_id, student_id)
+            VALUES (?, ?, NULL)
+            ON DUPLICATE KEY UPDATE student_id = NULL
+        ")->execute([$sessionId, (int)$seatId]);
 
         Response::json(['ok' => true]);
     }
