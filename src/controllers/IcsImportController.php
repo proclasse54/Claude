@@ -246,7 +246,7 @@ class IcsImportController
         // 3. Créer le plan — avec group_id si c'est un plan de groupe
         $db->prepare(
             "INSERT INTO seating_plans (class_id, group_id, room_id, name) VALUES (?, ?, ?, ?)"
-        )->execute([$classId, $groupId, $roomId, "Plan al\u00e9atoire \u2013 $className"]);
+        )->execute([$classId, $groupId, $roomId, "Plan aléatoire - $className"]);
         $planId = (int)$db->lastInsertId();
 
         // 4. Récupérer les sièges

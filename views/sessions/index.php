@@ -124,6 +124,7 @@
 
     $pxParHeure   = 64;
     $hauteurTotal = ($heureFin - $heureDebut) * $pxParHeure;
+    $currentWeekSlug = $weekDate->format('o-\WW');
   ?>
 
   <!-- Agenda : axe horaire + grille 5 jours -->
@@ -162,7 +163,7 @@
             ?>
             <div class="week-card <?= $ws['plan_id'] ? '' : 'week-card--multi' ?>"
                 style="top:<?= round($top) ?>px;height:<?= round($height) ?>px;<?= $ws['plan_id'] ? '' : 'opacity:.6;cursor:default;' ?>"
-                <?= $ws['plan_id'] ? "onclick=\"window.location='/sessions/{$ws['id']}/live?from_week=<?= urlencode($weekDate->format('o\\\\-\\\\WW')) ?>'\"" : '' ?>>
+                <?php if ($ws['plan_id']): ?>onclick="window.location='/sessions/<?= $ws['id'] ?>/live?from_week=<?= $currentWeekSlug ?>'"<?php endif ?>>
               <div style="display:flex;justify-content:space-between;align-items:baseline;gap:.25rem;">
                 <div class="week-card-class"><?= htmlspecialchars($ws['class_name'] ?? '') ?></div>
                 <?php if ($ws['room_name']): ?>
