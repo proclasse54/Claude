@@ -263,36 +263,47 @@ let _sessionExpired = false;
 function showSessionExpiredToast() {
   if (_sessionExpired) return;
   _sessionExpired = true;
-
-  const toast = document.getElementById('sessionExpiredToast');
-  toast.hidden = false;
-  // Grisé : bloquer les interactions drag
+  document.getElementById('sessionExpiredToast').hidden = false;
   liveRoom.classList.add('session-expired');
 }
 
 /**
- * Wrapper autour de fetch() qui détecte automatiquement :
- * - Redirection 302 vers la page de login (réponse HTML reçue au lieu de JSON)
- * - Statut HTTP 401 / 403
- * Lance showSessionExpiredToast() et rejette la promesse dans ces cas.
+ * Wrapper fetch() sûr pour les API JSON de ProClasse.
+ *
+ * Détection session expirée :
+ *  1. Statut 401 / 403 -> toast
+ *  2. Statut non-2xx + body non parseable en JSON (= page HTML login renvoyée) -> toast
+ *  3. Statut 2xx mais body non parseable -> erreur technique normale (pas de toast)
  */
 async function apiFetch(url, options = {}) {
-  const r = await fetch(url, options);
+  let r;
+  try {
+    r = await fetch(url, options);
+  } catch (networkErr) {
+    throw networkErr; // perte réseau, pas une déconnexion
+  }
 
-  // 401 / 403 : déconnecté
+  // Authentification refusée explicitement
   if (r.status === 401 || r.status === 403) {
     showSessionExpiredToast();
     throw new Error('Session expirée');
   }
 
-  // Le serveur a redirect vers /login et fetch a suivi : on reçoit du HTML
-  const contentType = r.headers.get('content-type') || '';
-  if (!contentType.includes('application/json')) {
-    showSessionExpiredToast();
-    throw new Error('Session expirée');
+  // Essai de parse JSON
+  let data;
+  try {
+    data = await r.json();
+  } catch (_) {
+    // Parsing échoué :
+    // - si status non-2xx : le serveur a probablement renvoyé la page de login (HTML)
+    // - si status 2xx     : réponse vide ou malformée côté serveur, erreur technique
+    if (!r.ok) {
+      showSessionExpiredToast();
+      throw new Error('Session expirée');
+    }
+    throw new Error(`Réponse invalide du serveur (${r.status})`);
   }
 
-  const data = await r.json();
   return data;
 }
 
@@ -377,7 +388,6 @@ function scopeClose() {
 }
 
 function askScope(studentName) {
-  // Si session déjà expirée, on annule directement
   if (_sessionExpired) return Promise.resolve(null);
   return new Promise(resolve => {
     _scopeResolve = resolve;
@@ -451,8 +461,7 @@ async function moveSeat(studentId, targetSeatId) {
     const result = await persistMove(studentId, sourceSeatId, targetSeatId, scope);
     if (!result.ok) throw new Error(result.error || 'Erreur inconnue');
   } catch (e) {
-    if (_sessionExpired) return; // toast déjà affiché, pas d'alert
-    // Annuler le swap visuel
+    if (_sessionExpired) return;
     if (srcPayload.occupied) setSeatOccupied(srcEl, srcPayload); else setSeatEmpty(srcEl);
     if (tgtPayload.occupied) setSeatOccupied(tgtEl, tgtPayload); else setSeatEmpty(tgtEl);
     seatStudentMap[sourceSeatId] = srcPayload.studentId ? parseInt(srcPayload.studentId) : null;
