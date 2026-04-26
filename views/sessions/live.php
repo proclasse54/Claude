@@ -156,7 +156,7 @@ ob_start();
 </div>
 
 <!-- ================================================
-     MODALE SCOPE : session ou plan
+     MODALE SCOPE : session / futures / toutes
      ================================================ -->
 <div id="scopeModal" class="scope-modal-overlay"
      role="dialog" aria-modal="true" aria-labelledby="scopeModalTitle">
@@ -170,8 +170,12 @@ ob_start();
         <small>Les autres séances ne bougent pas</small>
       </button>
       <button class="btn btn-secondary" id="scopeBtnPlan">
-        &#128506;&#65039; Le plan de référence
-        <small>Séances futures réinitialisées sur ce siège</small>
+        &#9193; Les futures séances
+        <small>Séances passées conservées, futures réinitialisées</small>
+      </button>
+      <button class="btn btn-secondary" id="scopeBtnAll">
+        &#128506;&#65039; Toutes les séances
+        <small>Passées et futures réinitialisées sur ce siège</small>
       </button>
     </div>
 
@@ -330,6 +334,7 @@ function scopeResolve(value) {
 
 document.getElementById('scopeBtnSession').addEventListener('click', () => scopeResolve('session'));
 document.getElementById('scopeBtnPlan').addEventListener('click',    () => scopeResolve('plan'));
+document.getElementById('scopeBtnAll').addEventListener('click',     () => scopeResolve('all'));
 document.getElementById('scopeBtnCancel').addEventListener('click',  () => scopeResolve(null));
 
 scopeModal.addEventListener('click', e => {
