@@ -92,6 +92,47 @@ body {
 }
 .theme-toggle:hover { background: rgba(255,255,255,.06); }
 
+/* ── Sidebar separator ────────────────────────────────────── */
+.sidebar-separator {
+  height: 1px;
+  background: rgba(255,255,255,.08);
+  margin: var(--space-2) 0;
+  list-style: none;
+}
+
+/* ── Sidebar footer (username + logout) ───────────────────── */
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: var(--space-4);
+  border-top: 1px solid rgba(255,255,255,.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.sidebar-user {
+  font-size: var(--text-xs);
+  color: var(--sidebar-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.btn-logout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  color: var(--sidebar-text);
+  text-decoration: none;
+  transition: background var(--transition), color var(--transition);
+  flex-shrink: 0;
+}
+.btn-logout:hover {
+  background: rgba(255,255,255,.06);
+  color: #fff;
+}
+
 /* ── Main content ─────────────────────────────────────────── */
 .main-content {
   flex: 1; padding: var(--space-8);
@@ -314,6 +355,8 @@ body {
   .sidebar { width: 60px; padding: var(--space-4) var(--space-2); }
   .sidebar-logo span, .sidebar-nav a span { display: none; }
   .sidebar-nav a { padding: var(--space-3); justify-content: center; }
+  .sidebar-footer { justify-content: center; }
+  .sidebar-user { display: none; }
   .editor-layout { grid-template-columns: 1fr; }
   .live-layout { grid-template-columns: 1fr; }
   .live-sidebar { flex-direction: row; flex-wrap: wrap; }
@@ -700,13 +743,6 @@ emoji-picker {
 }
 
 /* ── Indication visuelle sur les sièges libres (drop possible) ── */
-/*.plan-seat.free {*/
-  /* légère animation de pulsation quand un drag est en cours  */
-  /* activée via .drag-active sur #planRoom                    */
-/*}*/
-
-
-/* ── Indication visuelle sur les sièges libres (drop possible) ── */
 #planRoom.drag-active .plan-seat.free:not(.inactive) {
   border-style: dashed;
   border-color: color-mix(in oklab, var(--primary) 60%, var(--border));
@@ -1015,5 +1051,3 @@ details[open] .modal-details-icon {
   .import-tab  { padding: var(--space-3) var(--space-2); }
   .import-tab-icon { font-size: 1.2rem; }
 }
-
-
