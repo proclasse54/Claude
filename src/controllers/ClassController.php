@@ -115,7 +115,7 @@ class ClassController {
         require ROOT . '/views/plans/edit.php';
     }
 
-    // ── API ────────────────────────────────────────────────────
+    // ── API ────────────────────────────────────────────
 
     public function apiSaveClass(array $p): void {
         $data = json_decode(file_get_contents('php://input'), true);
@@ -141,6 +141,21 @@ class ClassController {
 
         $db->beginTransaction();
         try {
+            // Supprimer les observations liées aux séances des plans de la classe
+            $db->prepare("
+                DELETE o FROM observations o
+                JOIN sessions se ON se.id = o.session_id
+                JOIN seating_plans sp ON sp.id = se.plan_id
+                WHERE sp.class_id = ?
+            ")->execute([$id]);
+
+            // Supprimer les séances liées aux plans de la classe
+            $db->prepare("
+                DELETE se FROM sessions se
+                JOIN seating_plans sp ON sp.id = se.plan_id
+                WHERE sp.class_id = ?
+            ")->execute([$id]);
+
             // Supprimer les assignments liés aux plans de la classe
             $db->prepare("
                 DELETE sa FROM seating_assignments sa
@@ -150,6 +165,16 @@ class ClassController {
 
             // Supprimer les plans
             $db->prepare("DELETE FROM seating_plans WHERE class_id = ?")->execute([$id]);
+
+            // Supprimer les membres des groupes de la classe
+            $db->prepare("
+                DELETE gs FROM group_students gs
+                JOIN `groups` g ON g.id = gs.group_id
+                WHERE g.class_id = ?
+            ")->execute([$id]);
+
+            // Supprimer les groupes de la classe
+            $db->prepare("DELETE FROM `groups` WHERE class_id = ?")->execute([$id]);
 
             // Supprimer les élèves
             $db->prepare("DELETE FROM students WHERE class_id = ?")->execute([$id]);
