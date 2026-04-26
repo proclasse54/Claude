@@ -59,7 +59,12 @@ class IcsImportController
             }
 
             // Convertir DTSTART en date + heure locale Paris
-            $dtStart = $this->icsDateToLocal($ev['dtstart'] ?? '');
+            // On transmet la TZID extraite par parseIcs() pour gérer correctement
+            // les dates Pronote de type DTSTART;TZID=Europe/Paris:20260427T080000
+            $dtStart = $this->icsDateToLocal(
+                $ev['dtstart'] ?? '',
+                $ev['dtstart_tzid'] ?? null
+            );
             if (!$dtStart) {
                 $errors[] = "Date invalide pour : " . ($ev['summary'] ?? '');
                 continue;
@@ -68,7 +73,10 @@ class IcsImportController
             $timeStart = $dtStart->format('H:i:s');
 
             // DTEND → heure de fin
-            $dtEnd   = $this->icsDateToLocal($ev['dtend'] ?? '');
+            $dtEnd   = $this->icsDateToLocal(
+                $ev['dtend'] ?? '',
+                $ev['dtend_tzid'] ?? null
+            );
             $timeEnd = $dtEnd ? $dtEnd->format('H:i:s') : null;
 
             // --- Trouver la classe ---
@@ -87,7 +95,7 @@ class IcsImportController
             }
 
             if (!$class) {
-                $errors[] = "Classe/Groupe inconnue en base : « $className » (séance du $date)";
+                $errors[] = "Classe/Groupe inconnue en base : \u00ab $className \u00bb (s\u00e9ance du $date)";
                 continue;
             }
 
@@ -120,7 +128,7 @@ class IcsImportController
                     $group ? (int)$group['id'] : null
                 );
                 if (!$planId) {
-                    $errors[] = "Impossible de créer un plan pour : $className (pas d'élèves ou de salle ?)";
+                    $errors[] = "Impossible de cr\u00e9er un plan pour : $className (pas d'\u00e9l\u00e8ves ou de salle ?)";
                     continue;
                 }
                 $plan = ['id' => $planId];
@@ -215,7 +223,7 @@ class IcsImportController
         // 3. Créer le plan — avec group_id si c'est un plan de groupe
         $db->prepare(
             "INSERT INTO seating_plans (class_id, group_id, room_id, name) VALUES (?, ?, ?, ?)"
-        )->execute([$classId, $groupId, $roomId, "Plan aléatoire – $className"]);
+        )->execute([$classId, $groupId, $roomId, "Plan al\u00e9atoire \u2013 $className"]);
         $planId = (int)$db->lastInsertId();
 
         // 4. Récupérer les sièges
@@ -295,7 +303,7 @@ class IcsImportController
             // Stocker la timezone du DTSTART/DTEND si présente dans les paramètres
             if (in_array($key, ['dtstart', 'dtend'], true) && str_contains($params, 'TZID=')) {
                 preg_match('/TZID=([^;]+)/', $params, $tzMatch);
-                $current[$key . '_tzid'] = $tzMatch[1] ?? null;
+                $current[$key . '_tzid'] = isset($tzMatch[1]) ? trim($tzMatch[1]) : null;
             }
 
             $current[$key] = $val;
@@ -310,9 +318,9 @@ class IcsImportController
         // Supporte les noms de groupes contenant " - "
         if (preg_match('/[\[<]([^\]>]+)[\]>]\s*$/', $summary, $m)) {
             // Le sujet = tout ce qui précède le premier " - [" ou " - <"
-            $subject = preg_replace('/\s*[-–]\s*[\[<][^\]>]+[\]>]\s*$/', '', $summary);
+            $subject = preg_replace('/\s*[-\u2013]\s*[\[<][^\]>]+[\]>]\s*$/', '', $summary);
             // Si le subject contient encore un groupe (cas "MAT - [GR] - <GR>"), retirer aussi
-            $subject = preg_replace('/\s*[-–]\s*[\[<][^\]>]+[\]>]\s*$/', '', $subject);
+            $subject = preg_replace('/\s*[-\u2013]\s*[\[<][^\]>]+[\]>]\s*$/', '', $subject);
             // Retirer un éventuel " - NomClasse" final résiduel si sujet = juste la matière
             // => ne prendre que la partie avant le premier " - "
             $subjectParts = explode(' - ', $subject);
@@ -342,7 +350,7 @@ class IcsImportController
                 $dt = new \DateTime($icsDate, new \DateTimeZone('UTC'));
                 $dt->setTimezone(new \DateTimeZone('Europe/Paris'));
             } elseif ($tzid) {
-                // Bug 17 : utiliser la TZID extraite des paramètres si disponible
+                // Utiliser la TZID extraite des paramètres ICS si disponible
                 $tz = new \DateTimeZone($tzid);
                 $dt = new \DateTime($icsDate, $tz);
                 $dt->setTimezone(new \DateTimeZone('Europe/Paris'));
