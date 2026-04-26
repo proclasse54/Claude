@@ -47,13 +47,24 @@ ob_start();
       <label class="import-label" for="studentsArea">
         Données élèves <span class="import-label-hint">(coller le tableau Pronote)</span>
       </label>
-      <textarea
-        id="studentsArea"
-        name="csv"
-        class="import-textarea"
-        placeholder="Collez ici le contenu copié depuis Pronote (Ctrl+V)…&#10;&#10;La première ligne doit contenir les en-têtes : Nom, Prénom, Classe…"
-        spellcheck="false"
-      ></textarea>
+
+      <!-- Zone de collage avec style encadré visible -->
+      <div class="import-paste-zone" id="studentsPasteZone">
+        <div class="import-paste-hint" id="studentsPasteHint">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".4"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+          <span>Cliquez ici puis collez avec <kbd>Ctrl+V</kbd></span>
+        </div>
+        <textarea
+          id="studentsArea"
+          name="csv"
+          class="import-textarea"
+          placeholder="Collez ici le contenu copié depuis Pronote (Ctrl+V)…&#10;&#10;La première ligne doit contenir les en-têtes : Nom, Prénom, Classe…"
+          spellcheck="false"
+        ></textarea>
+      </div>
+
+      <!-- Preview instantané -->
+      <div id="studentsPreview" class="import-preview" hidden></div>
 
       <div class="import-actions">
         <button type="submit" class="btn btn-primary" id="studentsBtn">
@@ -147,6 +158,67 @@ ob_start();
 
 </div>
 
+<style>
+/* ── Zone de collage encadrée ─────────────────────────────── */
+.import-paste-zone {
+  position: relative;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+  transition: border-color var(--transition), background var(--transition);
+  min-height: 160px;
+  cursor: text;
+}
+.import-paste-zone:focus-within,
+.import-paste-zone.has-content {
+  border-style: solid;
+  border-color: var(--primary);
+  background: var(--surface-2);
+}
+.import-paste-zone:not(.has-content):not(:focus-within):hover {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+
+/* Hint centré visible quand vide */
+.import-paste-hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  pointer-events: none;
+  text-align: center;
+  padding: 1rem;
+  transition: opacity var(--transition);
+}
+.import-paste-zone.has-content .import-paste-hint {
+  opacity: 0;
+}
+
+/* La textarea remplit toute la zone, fond transparent */
+.import-paste-zone .import-textarea {
+  position: relative;
+  width: 100%;
+  min-height: 160px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  resize: vertical;
+  z-index: 1;
+}
+.import-paste-zone .import-textarea:focus {
+  outline: none;
+  box-shadow: none;
+  border: none;
+}
+</style>
+
 <script>
 // ── Onglets ───────────────────────────────────────────────
 document.querySelectorAll('.import-tab').forEach(tab => {
@@ -195,18 +267,84 @@ function initDropzone(zoneId, inputId, filenameId, btnId, ext) {
 initDropzone('icsDropzone', 'icsFile', 'icsFilename', 'sessionsBtn', 'ics');
 initDropzone('pdfDropzone', 'pdfFile', 'pdfFilename', 'photosBtn',   'pdf');
 
+// ── Preview instantané lors du collage élèves ─────────────
+const studentsArea    = document.getElementById('studentsArea');
+const studentsPasteZone = document.getElementById('studentsPasteZone');
+const studentsPreview = document.getElementById('studentsPreview');
+
+function parseStudentsPreview(text) {
+  if (!text.trim()) return null;
+  const lines = text.trim().split('\n').filter(l => l.trim());
+  if (lines.length < 2) return null;
+
+  // Détecter la colonne "Classe" dans l'en-tête
+  const header = lines[0].split('\t').map(h => h.trim().toLowerCase());
+  const classeIdx = header.findIndex(h => h === 'classe' || h === 'class' || h === 'division');
+
+  const classCounts = {};
+  let totalStudents = 0;
+
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split('\t');
+    if (cols.length < 2) continue;
+    totalStudents++;
+    if (classeIdx >= 0 && cols[classeIdx]) {
+      const cls = cols[classeIdx].trim();
+      if (cls) classCounts[cls] = (classCounts[cls] || 0) + 1;
+    }
+  }
+
+  if (totalStudents === 0) return null;
+  return { totalStudents, classCounts };
+}
+
+studentsArea.addEventListener('input', () => {
+  const val = studentsArea.value;
+
+  // Basculer la classe has-content pour l'aspect visuel
+  if (val.trim()) {
+    studentsPasteZone.classList.add('has-content');
+  } else {
+    studentsPasteZone.classList.remove('has-content');
+    studentsPreview.hidden = true;
+    return;
+  }
+
+  // Parser et afficher le preview
+  const parsed = parseStudentsPreview(val);
+  if (!parsed) {
+    studentsPreview.hidden = true;
+    return;
+  }
+
+  const { totalStudents, classCounts } = parsed;
+  const classNames = Object.keys(classCounts);
+
+  let html = `👥 <strong>${totalStudents}</strong> élève${totalStudents > 1 ? 's' : ''} détecté${totalStudents > 1 ? 's' : ''}`;
+
+  if (classNames.length > 0) {
+    html += ` · <strong>${classNames.length}</strong> classe${classNames.length > 1 ? 's' : ''} : `;
+    html += classNames
+      .sort()
+      .map(cls => `<span style="display:inline-block;background:var(--primary-light);color:var(--primary);border-radius:var(--radius-full);padding:1px 8px;font-size:var(--text-xs);margin:1px 2px;">${cls} <em style="font-style:normal;opacity:.7">(${classCounts[cls]})</em></span>`)
+      .join('');
+  }
+
+  studentsPreview.innerHTML = html;
+  studentsPreview.hidden = false;
+});
+
 // ── Import élèves (copier-coller) ─────────────────────────
 document.getElementById('studentsForm').addEventListener('submit', async e => {
   e.preventDefault();
   const btn = document.getElementById('studentsBtn');
   const res = document.getElementById('studentsResult');
-  const csv = document.getElementById('studentsArea').value.trim();
+  const csv = studentsArea.value.trim();
   if (!csv) { showResult(res, 'error', 'Veuillez coller les données Pronote.'); return; }
 
   btn.disabled = true; btn.textContent = '⏳ Import en cours…';
   res.hidden = true;
 
-  // ✅ Même appel que show.php : JSON + route /import-paste sans class_id
   const data = await fetch('/api/classes/0/import-paste', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -224,6 +362,10 @@ document.getElementById('studentsForm').addEventListener('submit', async e => {
         ${data.errors.map(e => `<div class="import-error-line">• ${e}</div>`).join('')}
       </details>`;
     }
+    // Vider la zone après import réussi
+    studentsArea.value = '';
+    studentsPasteZone.classList.remove('has-content');
+    studentsPreview.hidden = true;
   } else {
     showResult(res, 'error', '❌ ' + (data.error ?? 'Erreur inconnue'));
   }
@@ -270,7 +412,6 @@ document.getElementById('photosForm').addEventListener('submit', async e => {
   res.hidden = true;
   progress.hidden = false;
 
-  // Animation indéterminée pendant l'upload
   fill.style.width = '0%';
   let fakeProgress = 0;
   const ticker = setInterval(() => {
