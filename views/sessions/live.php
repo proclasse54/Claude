@@ -25,13 +25,13 @@ ob_start();
                 : null;
     $backUrl = $fromWeek ? '/sessions?view=week&week=' . htmlspecialchars($fromWeek) : '/sessions';
   ?>
-  <a href="<?= $backUrl ?>" class="btn btn-ghost btn-sm">← Séances</a>
+  <a href="<?= $backUrl ?>" class="btn btn-ghost btn-sm">&larr; Séances</a>
 
   <div class="live-title">
     <strong><?= htmlspecialchars($session['class_name']) ?></strong>
-    <span>·</span>
+    <span>&middot;</span>
     <span><?= htmlspecialchars($session['room_name']) ?></span>
-    <span>·</span>
+    <span>&middot;</span>
     <span><?= date('d/m/Y', strtotime($session['date'])) ?></span>
     <?php if ($session['subject']): ?>
     <span class="badge"><?= htmlspecialchars($session['subject']) ?></span>
@@ -84,7 +84,7 @@ ob_start();
                   <?php endforeach; ?>
                 </div>
               <?php else: ?>
-                <div class="seat-empty-label">—</div>
+                <div class="seat-empty-label">&mdash;</div>
               <?php endif; ?>
             </div>
           <?php endif; ?>
@@ -117,24 +117,24 @@ ob_start();
 <!-- ================================================
      MODALE SCOPE : session ou plan
      ================================================ -->
-<div id="scopeModal" class="scope-modal-overlay" hidden
+<div id="scopeModal" class="scope-modal-overlay"
      role="dialog" aria-modal="true" aria-labelledby="scopeModalTitle">
   <div class="scope-modal">
     <h3 id="scopeModalTitle">Déplacer <span id="scopeStudentName"></span></h3>
-    <p class="scope-modal-sub">Ce déplacement doit-il affecter :</p>
+    <p class="scope-modal-sub">Ce déplacement doit-il affecter :</p>
 
     <div class="scope-modal-actions">
       <button class="btn btn-primary" id="scopeBtnSession">
-        📅 Cette séance uniquement
+        &#128197; Cette séance uniquement
         <small>Les autres séances ne bougent pas</small>
       </button>
       <button class="btn btn-secondary" id="scopeBtnPlan">
-        🗺️ Le plan de référence
+        &#128506;&#65039; Le plan de référence
         <small>Séances futures réinitialisées sur ce siège</small>
       </button>
     </div>
 
-    <button class="scope-modal-cancel" id="scopeBtnCancel" aria-label="Annuler">✕ Annuler</button>
+    <button class="scope-modal-cancel" id="scopeBtnCancel" aria-label="Annuler">&#x2715; Annuler</button>
   </div>
 </div>
 
@@ -174,7 +174,7 @@ function setSeatOccupied(el, payload) {
 }
 
 function setSeatEmpty(el) {
-  el.innerHTML = '<div class="seat-empty-label">—</div>';
+  el.innerHTML = '<div class="seat-empty-label">&mdash;</div>';
   el.dataset.studentId = '';
   el.dataset.studentName = '';
   el.className = 'live-seat empty';
@@ -259,37 +259,49 @@ function refreshTags(studentId) {
 }
 
 // --------------------------------------------------
-// MODALE SCOPE
+// MODALE SCOPE — gérée par classe CSS (pas hidden)
 // --------------------------------------------------
-const scopeModal   = document.getElementById('scopeModal');
-const scopeNameEl  = document.getElementById('scopeStudentName');
+const scopeModal  = document.getElementById('scopeModal');
+const scopeNameEl = document.getElementById('scopeStudentName');
 
 let _scopeResolve = null;
+
+function scopeOpen(studentName) {
+  scopeNameEl.textContent = studentName;
+  scopeModal.classList.add('is-open');
+  document.getElementById('scopeBtnSession').focus();
+}
+
+function scopeClose() {
+  scopeModal.classList.remove('is-open');
+}
 
 function askScope(studentName) {
   return new Promise(resolve => {
     _scopeResolve = resolve;
-    scopeNameEl.textContent = studentName;
-    scopeModal.hidden = false;
+    scopeOpen(studentName);
   });
 }
 
-document.getElementById('scopeBtnSession').addEventListener('click', () => {
-  scopeModal.hidden = true;
-  if (_scopeResolve) { _scopeResolve('session'); _scopeResolve = null; }
-});
-document.getElementById('scopeBtnPlan').addEventListener('click', () => {
-  scopeModal.hidden = true;
-  if (_scopeResolve) { _scopeResolve('plan'); _scopeResolve = null; }
-});
-document.getElementById('scopeBtnCancel').addEventListener('click', () => {
-  scopeModal.hidden = true;
-  if (_scopeResolve) { _scopeResolve(null); _scopeResolve = null; }
-});
+function scopeResolve(value) {
+  scopeClose();
+  if (_scopeResolve) { _scopeResolve(value); _scopeResolve = null; }
+}
+
+document.getElementById('scopeBtnSession').addEventListener('click', () => scopeResolve('session'));
+document.getElementById('scopeBtnPlan').addEventListener('click',    () => scopeResolve('plan'));
+document.getElementById('scopeBtnCancel').addEventListener('click',  () => scopeResolve(null));
+
+// Clic sur l'overlay = annuler
 scopeModal.addEventListener('click', e => {
-  if (e.target === scopeModal) {
-    scopeModal.hidden = true;
-    if (_scopeResolve) { _scopeResolve(null); _scopeResolve = null; }
+  if (e.target === scopeModal) scopeResolve(null);
+});
+
+// Escape = annuler (sans fermer les autres modales)
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && scopeModal.classList.contains('is-open')) {
+    e.stopImmediatePropagation();
+    scopeResolve(null);
   }
 });
 
@@ -304,7 +316,7 @@ async function persistMove(studentId, sourceSeatId, targetSeatId, scope) {
       student_id:     studentId,
       source_seat_id: sourceSeatId,
       target_seat_id: targetSeatId,
-      scope:          scope          // 'session' | 'plan'
+      scope:          scope
     })
   });
   return r.json();
@@ -322,7 +334,7 @@ async function moveSeat(studentId, targetSeatId) {
   if (!srcEl || !tgtEl) return;
 
   // Demander le scope AVANT toute modification UI
-  const srcName = srcEl.dataset.studentName || 'l\''élève';
+  const srcName = srcEl.dataset.studentName || 'l\'élève';
   const scope = await askScope(srcName);
   if (!scope) return;  // annulé
 
@@ -435,7 +447,7 @@ liveRoom.addEventListener('drop', e => {
   seat.classList.remove('drag-over');
   liveRoom.classList.remove('drag-active');
 
-  const studentId  = parseInt(e.dataTransfer.getData('text/plain'));
+  const studentId    = parseInt(e.dataTransfer.getData('text/plain'));
   const targetSeatId = parseInt(seat.dataset.seatId);
 
   if (!isNaN(studentId) && !isNaN(targetSeatId)) {
@@ -562,7 +574,7 @@ liveRoom.addEventListener('touchcancel', () => {
 <div id="studentModal" class="student-modal-overlay" hidden
      aria-modal="true" role="dialog" aria-labelledby="modalStudentName">
   <div class="student-modal">
-    <button class="student-modal-close" id="modalClose" aria-label="Fermer">✕</button>
+    <button class="student-modal-close" id="modalClose" aria-label="Fermer">&#x2715;</button>
     <div class="student-modal-header">
       <div class="student-modal-avatar" id="modalAvatar"></div>
       <div>
@@ -571,11 +583,11 @@ liveRoom.addEventListener('touchcancel', () => {
       </div>
     </div>
     <div class="student-modal-body" id="modalBody">
-      <div class="student-modal-loading">Chargement…</div>
+      <div class="student-modal-loading">Chargement&hellip;</div>
     </div>
     <div class="student-modal-footer">
       <button class="btn btn-danger btn-sm" id="modalRemoveBtn">
-        🗑 Retirer du plan de salle
+        &#128465; Retirer du plan de salle
       </button>
     </div>
   </div>
