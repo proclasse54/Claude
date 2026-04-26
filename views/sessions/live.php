@@ -80,6 +80,18 @@ ob_start();
   </div>
 </div>
 
+<!-- ================================================
+     TOAST SESSION EXPIRÉE
+     ================================================ -->
+<div id="sessionExpiredToast" class="session-expired-toast" hidden role="alert" aria-live="assertive">
+  <div class="session-expired-icon">&#128274;</div>
+  <div class="session-expired-body">
+    <strong>Session expirée</strong>
+    <p>Vous avez été déconnecté. Vos modifications ne sont plus enregistrées.</p>
+  </div>
+  <a href="/login?redirect=<?= urlencode('/sessions/' . (int)$session['id'] . '/live') ?>" class="btn btn-primary btn-sm">Se reconnecter</a>
+</div>
+
 <div class="live-layout">
   <div class="live-room-wrap">
     <div class="room-label-top">Tableau / Bureau du professeur</div>
@@ -243,18 +255,62 @@ function openTagMenu(seatId, studentId, name) {
   document.getElementById('selectedStudent').hidden = false;
 }
 
+// --------------------------------------------------
+// SESSION EXPIRÉE : détection + toast
+// --------------------------------------------------
+let _sessionExpired = false;
+
+function showSessionExpiredToast() {
+  if (_sessionExpired) return;
+  _sessionExpired = true;
+
+  const toast = document.getElementById('sessionExpiredToast');
+  toast.hidden = false;
+  // Grisé : bloquer les interactions drag
+  liveRoom.classList.add('session-expired');
+}
+
+/**
+ * Wrapper autour de fetch() qui détecte automatiquement :
+ * - Redirection 302 vers la page de login (réponse HTML reçue au lieu de JSON)
+ * - Statut HTTP 401 / 403
+ * Lance showSessionExpiredToast() et rejette la promesse dans ces cas.
+ */
+async function apiFetch(url, options = {}) {
+  const r = await fetch(url, options);
+
+  // 401 / 403 : déconnecté
+  if (r.status === 401 || r.status === 403) {
+    showSessionExpiredToast();
+    throw new Error('Session expirée');
+  }
+
+  // Le serveur a redirect vers /login et fetch a suivi : on reçoit du HTML
+  const contentType = r.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    showSessionExpiredToast();
+    throw new Error('Session expirée');
+  }
+
+  const data = await r.json();
+  return data;
+}
+
+// --------------------------------------------------
+// API
+// --------------------------------------------------
 function selectTag(tag, icon = '', color = '#888') {
   if (!currentStudentId) return;
 
-  fetch(`/api/sessions/${SESSION_ID}/observations`, {
+  apiFetch(`/api/sessions/${SESSION_ID}/observations`, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({ student_id: currentStudentId, tag })
   })
-  .then(r => r.json())
   .then(d => {
     if (d.ok) addTagChip(currentStudentId, d.obs_id, tag, color, icon);
-  });
+  })
+  .catch(() => {});
 }
 
 function addTagChip(studentId, obsId, tag, color = '#888', icon = '') {
@@ -272,8 +328,7 @@ function addTagChip(studentId, obsId, tag, color = '#888', icon = '') {
 }
 
 function removeObs(obsId, studentId, chipEl = null) {
-  fetch(`/api/sessions/${SESSION_ID}/observations/${obsId}`, { method: 'DELETE' })
-    .then(r => r.json())
+  apiFetch(`/api/sessions/${SESSION_ID}/observations/${obsId}`, { method: 'DELETE' })
     .then(d => {
       if (!d.ok) return;
       if (chipEl) {
@@ -281,12 +336,12 @@ function removeObs(obsId, studentId, chipEl = null) {
       } else {
         refreshTags(studentId);
       }
-    });
+    })
+    .catch(() => {});
 }
 
 function refreshTags(studentId) {
-  fetch(`/api/sessions/${SESSION_ID}/observations`)
-    .then(r => r.json())
+  apiFetch(`/api/sessions/${SESSION_ID}/observations`)
     .then(obs => {
       const container = document.getElementById('tags-' + studentId);
       if (!container) return;
@@ -299,7 +354,8 @@ function refreshTags(studentId) {
               data-student-id="${studentId}"
               title="Retirer">${(o.icon ? o.icon + ' ' : '') + (o.tag || '')}</span>`
       ).join('');
-    });
+    })
+    .catch(() => {});
 }
 
 // --------------------------------------------------
@@ -321,6 +377,8 @@ function scopeClose() {
 }
 
 function askScope(studentName) {
+  // Si session déjà expirée, on annule directement
+  if (_sessionExpired) return Promise.resolve(null);
   return new Promise(resolve => {
     _scopeResolve = resolve;
     scopeOpen(studentName);
@@ -348,11 +406,8 @@ document.addEventListener('keydown', e => {
   }
 });
 
-// --------------------------------------------------
-// API
-// --------------------------------------------------
 async function persistMove(studentId, sourceSeatId, targetSeatId, scope) {
-  const r = await fetch(`/api/sessions/${SESSION_ID}/move-seat`, {
+  return apiFetch(`/api/sessions/${SESSION_ID}/move-seat`, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({
@@ -362,10 +417,11 @@ async function persistMove(studentId, sourceSeatId, targetSeatId, scope) {
       scope:          scope
     })
   });
-  return r.json();
 }
 
 async function moveSeat(studentId, targetSeatId) {
+  if (_sessionExpired) return;
+
   const sourceSeatId = parseInt(
     Object.keys(seatStudentMap).find(k => seatStudentMap[k] === studentId)
   );
@@ -395,12 +451,13 @@ async function moveSeat(studentId, targetSeatId) {
     const result = await persistMove(studentId, sourceSeatId, targetSeatId, scope);
     if (!result.ok) throw new Error(result.error || 'Erreur inconnue');
   } catch (e) {
+    if (_sessionExpired) return; // toast déjà affiché, pas d'alert
     // Annuler le swap visuel
     if (srcPayload.occupied) setSeatOccupied(srcEl, srcPayload); else setSeatEmpty(srcEl);
     if (tgtPayload.occupied) setSeatOccupied(tgtEl, tgtPayload); else setSeatEmpty(tgtEl);
     seatStudentMap[sourceSeatId] = srcPayload.studentId ? parseInt(srcPayload.studentId) : null;
     seatStudentMap[targetSeatId] = tgtPayload.studentId ? parseInt(tgtPayload.studentId) : null;
-    alert('Déplacement non enregistré.\n\nDétail : ' + e.message);
+    alert('Déplacement non enregistré.\n\nDétail : ' + e.message);
   }
 }
 
@@ -443,6 +500,7 @@ tagsList.addEventListener('click', e => {
 let draggedStudentId = null;
 
 liveRoom.addEventListener('dragstart', e => {
+  if (_sessionExpired) { e.preventDefault(); return; }
   const seat = e.target.closest('.live-seat.occupied');
   if (!seat) { e.preventDefault(); return; }
 
@@ -465,6 +523,7 @@ liveRoom.addEventListener('dragend', e => {
 });
 
 liveRoom.addEventListener('dragover', e => {
+  if (_sessionExpired) return;
   const seat = e.target.closest('.live-seat:not(.inactive)');
   if (!seat) return;
   e.preventDefault();
@@ -478,6 +537,7 @@ liveRoom.addEventListener('dragleave', e => {
 });
 
 liveRoom.addEventListener('drop', e => {
+  if (_sessionExpired) return;
   const seat = e.target.closest('.live-seat:not(.inactive)');
   if (!seat) return;
 
@@ -506,6 +566,7 @@ let touchOffY = 0;
 let touchIsDrag = false;
 
 liveRoom.addEventListener('touchstart', e => {
+  if (_sessionExpired) return;
   if (e.target.closest('.tag-chip')) return;
 
   const seat = e.target.closest('.live-seat.occupied');
@@ -581,7 +642,7 @@ liveRoom.addEventListener('touchend', e => {
     liveRoom.classList.remove('drag-active');
     liveRoom.querySelectorAll('.drag-over').forEach(s => s.classList.remove('drag-over'));
 
-    if (target && target !== touchSrcEl && touchStudId !== null) {
+    if (!_sessionExpired && target && target !== touchSrcEl && touchStudId !== null) {
       const targetSeatId = parseInt(target.dataset.seatId);
       if (!isNaN(targetSeatId)) {
         target._dragJustHappened = true;
@@ -701,6 +762,56 @@ a.live-nav-btn::after {
 a.live-nav-btn:hover::after,
 a.live-nav-btn:focus-visible::after {
   opacity: 1;
+}
+
+/* ── Toast session expirée ── */
+.session-expired-toast {
+  position: fixed;
+  bottom: var(--space-6);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  background: var(--color-surface, #fff);
+  border: 1.5px solid var(--color-warning, #964219);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 32px oklch(0.2 0.02 60 / 0.18);
+  padding: var(--space-4) var(--space-5);
+  z-index: 10000;
+  max-width: min(480px, calc(100vw - var(--space-8)));
+  animation: toastIn 250ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+.session-expired-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+.session-expired-body {
+  flex: 1;
+  min-width: 0;
+}
+.session-expired-body strong {
+  display: block;
+  color: var(--color-warning, #964219);
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-1);
+}
+.session-expired-body p {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+/* Plan de salle grisé quand session expirée */
+.live-room.session-expired {
+  opacity: 0.45;
+  pointer-events: none;
+  user-select: none;
+  filter: grayscale(0.4);
+  transition: opacity 300ms ease, filter 300ms ease;
 }
 </style>
 </head>
