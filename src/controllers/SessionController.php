@@ -448,6 +448,9 @@ class SessionController
 
     public function apiMoveSeat(array $p): void
     {
+        // Neutraliser tout warning PHP qui polluerait la réponse JSON
+        set_error_handler(function () {});
+
         $data = json_decode(file_get_contents('php://input'), true);
 
         $studentId    = (int)($data['student_id']    ?? 0);
@@ -460,6 +463,7 @@ class SessionController
         $scope    = in_array($rawScope, ['session', 'plan', 'all'], true) ? $rawScope : 'session';
 
         if (!$studentId || !$sourceSeatId || !$targetSeatId || !$sessionId) {
+            restore_error_handler();
             Response::json(['error' => 'Paramètres manquants'], 400);
             return;
         }
@@ -471,6 +475,7 @@ class SessionController
         $session = $stmt->fetch();
 
         if (!$session) {
+            restore_error_handler();
             Response::json(['error' => 'Séance introuvable'], 404);
             return;
         }
@@ -575,23 +580,27 @@ class SessionController
                     ]);
                 }
 
-                // ÉTAPE 3 : Swap dans seating_assignments
-                if ($targetStudentId) {
-                    $db->prepare("DELETE FROM seating_assignments WHERE id = ?")
-                       ->execute([$targetAssignId]);
-                }
-
+                // ÉTAPE 3 : Swap dans seating_assignments via UPSERT (évite doublon unique)
+                // Déplacer l'élève source vers la cible
                 $db->prepare("
                     UPDATE seating_assignments
                     SET seat_id = ?
                     WHERE seat_id = ? AND plan_id = ? AND student_id = ?
                 ")->execute([$targetSeatId, $sourceSeatId, $planId, $studentId]);
 
+                // Placer l'élève cible sur le siège source (UPSERT)
                 if ($targetStudentId) {
                     $db->prepare("
                         INSERT INTO seating_assignments (plan_id, seat_id, student_id)
                         VALUES (?, ?, ?)
+                        ON DUPLICATE KEY UPDATE student_id = VALUES(student_id)
                     ")->execute([$planId, $sourceSeatId, $targetStudentId]);
+                } else {
+                    // Siège cible était vide : supprimer toute assignation résiduelle sur source
+                    $db->prepare("
+                        DELETE FROM seating_assignments
+                        WHERE seat_id = ? AND plan_id = ? AND student_id != ?
+                    ")->execute([$sourceSeatId, $planId, $studentId]);
                 }
 
                 // ÉTAPE 4 : Purger les overrides des séances STRICTEMENT POSTÉRIEURES
@@ -635,25 +644,27 @@ class SessionController
                 $stmtTgt->execute([$targetSeatId, $planId]);
                 $targetRow       = $stmtTgt->fetch();
                 $targetStudentId = $targetRow ? (int)$targetRow['student_id'] : null;
-                $targetAssignId  = $targetRow ? (int)$targetRow['id']         : null;
 
-                // Swap dans seating_assignments
-                if ($targetStudentId) {
-                    $db->prepare("DELETE FROM seating_assignments WHERE id = ?")
-                       ->execute([$targetAssignId]);
-                }
-
+                // Déplacer l'élève source vers la cible (UPDATE atomique)
                 $db->prepare("
                     UPDATE seating_assignments
                     SET seat_id = ?
                     WHERE seat_id = ? AND plan_id = ? AND student_id = ?
                 ")->execute([$targetSeatId, $sourceSeatId, $planId, $studentId]);
 
+                // Placer l'élève cible sur le siège source via UPSERT
                 if ($targetStudentId) {
                     $db->prepare("
                         INSERT INTO seating_assignments (plan_id, seat_id, student_id)
                         VALUES (?, ?, ?)
+                        ON DUPLICATE KEY UPDATE student_id = VALUES(student_id)
                     ")->execute([$planId, $sourceSeatId, $targetStudentId]);
+                } else {
+                    // Siège cible était vide : nettoyer toute assignation résiduelle sur source
+                    $db->prepare("
+                        DELETE FROM seating_assignments
+                        WHERE seat_id = ? AND plan_id = ? AND student_id != ?
+                    ")->execute([$sourceSeatId, $planId, $studentId]);
                 }
 
                 // Supprimer TOUS les overrides sur ces deux sièges pour ce plan
@@ -667,6 +678,7 @@ class SessionController
             }
 
             $db->commit();
+            restore_error_handler();
 
             Response::json([
                 'ok'                 => true,
@@ -676,6 +688,7 @@ class SessionController
 
         } catch (\Throwable $e) {
             if ($db->inTransaction()) $db->rollBack();
+            restore_error_handler();
             Response::json(['error' => $e->getMessage()], 500);
         }
     }
