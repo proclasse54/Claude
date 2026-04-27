@@ -167,9 +167,17 @@ class SessionController
         $stmtSeats->execute([$session['plan_id'], $session['room_id']]);
         $seatsRaw = $stmtSeats->fetchAll();
 
+        // Récupérer les overrides : on marque EXPLICITEMENT les sièges qui ont
+        // un override, même si student_id = NULL (siège volontairement vidé).
+        // On utilise une sentinelle 'has_override' pour différencier :
+        //   - pas de ligne dans session_seat_overrides  → utiliser le plan
+        //   - ligne présente avec student_id = NULL     → siège vide (override explicite)
+        //   - ligne présente avec student_id = X        → élève X (override)
         $stmtOv = $db->prepare("
-            SELECT sso.seat_id, sso.student_id AS override_student_id,
-                   st.last_name, st.first_name
+            SELECT sso.seat_id,
+                   sso.student_id AS override_student_id,
+                   st.last_name,
+                   st.first_name
             FROM session_seat_overrides sso
             LEFT JOIN students st ON st.id = sso.student_id
             WHERE sso.session_id = ?
@@ -177,18 +185,20 @@ class SessionController
         $stmtOv->execute([$p['id']]);
         $overrides = [];
         foreach ($stmtOv->fetchAll() as $ov) {
-            $overrides[(int)$ov['seat_id']] = $ov;
+            $overrides[(int)$ov['seat_id']] = $ov; // présence de la clé = override existe
         }
 
         $seats = [];
         foreach ($seatsRaw as $seat) {
             $seatId = (int)$seat['id'];
-            if (isset($overrides[$seatId])) {
+            if (array_key_exists($seatId, $overrides)) {
+                // Override présent (même si student_id est NULL → siège vidé)
                 $ov = $overrides[$seatId];
-                $seat['student_id'] = $ov['override_student_id'];
+                $seat['student_id'] = $ov['override_student_id']; // peut être null
                 $seat['last_name']  = $ov['last_name']  ?? null;
                 $seat['first_name'] = $ov['first_name'] ?? null;
             } else {
+                // Pas d'override : utiliser la position du plan
                 $seat['student_id'] = $seat['plan_student_id'];
             }
             $seats[] = $seat;
@@ -545,18 +555,35 @@ class SessionController
 
             if ($scope === 'session') {
                 // ── Override uniquement pour cette séance ──────────────────────
-                $stmtTgt = $db->prepare("
-                    SELECT COALESCE(sso.student_id, sa.student_id) AS current_student_id
-                    FROM seats s
-                    LEFT JOIN session_seat_overrides sso
-                           ON sso.seat_id = s.id AND sso.session_id = ?
-                    LEFT JOIN seating_assignments sa
-                           ON sa.seat_id = s.id AND sa.plan_id = ?
-                    WHERE s.id = ?
+                //
+                // CORRECTION : on ne peut PAS utiliser COALESCE(sso.student_id, sa.student_id)
+                // car si le siège cible a un override NULL (siège vidé explicitement),
+                // COALESCE retourne sa.student_id du plan → on croit le siège occupé.
+                //
+                // Solution : lire d'abord s'il existe un override sur le siège cible.
+                // Si oui, utiliser sa valeur (même NULL). Sinon, lire le plan.
+
+                $stmtOvTgt = $db->prepare("
+                    SELECT student_id, 1 AS has_override
+                    FROM session_seat_overrides
+                    WHERE session_id = ? AND seat_id = ?
                 ");
-                $stmtTgt->execute([$sessionId, $planId, $targetSeatId]);
-                $targetStudentId = $stmtTgt->fetchColumn();
-                $targetStudentId = $targetStudentId ? (int)$targetStudentId : null;
+                $stmtOvTgt->execute([$sessionId, $targetSeatId]);
+                $ovRow = $stmtOvTgt->fetch();
+
+                if ($ovRow) {
+                    // Override existant sur la cible (peut être NULL = siège vidé)
+                    $targetStudentId = $ovRow['student_id'] !== null ? (int)$ovRow['student_id'] : null;
+                } else {
+                    // Pas d'override : lire le plan
+                    $stmtPlanTgt = $db->prepare("
+                        SELECT student_id FROM seating_assignments
+                        WHERE seat_id = ? AND plan_id = ?
+                    ");
+                    $stmtPlanTgt->execute([$targetSeatId, $planId]);
+                    $planRow = $stmtPlanTgt->fetch();
+                    $targetStudentId = $planRow ? (int)$planRow['student_id'] : null;
+                }
 
                 $db->prepare("
                     INSERT INTO session_seat_overrides (session_id, seat_id, student_id)
