@@ -650,6 +650,20 @@ class SessionController
                     $db, $planId, $sourceSeatId, $studentId, $targetSeatId, $targetStudentId
                 );
 
+                // Mettre à jour les overrides de la séance courante pour refléter
+                // le nouvel état du plan (évite doublon si un override existait déjà)
+                $db->prepare("
+                    INSERT INTO session_seat_overrides (session_id, seat_id, student_id)
+                    VALUES (?, ?, ?)
+                    ON DUPLICATE KEY UPDATE student_id = VALUES(student_id)
+                ")->execute([$sessionId, $sourceSeatId, $targetStudentId]);
+
+                $db->prepare("
+                    INSERT INTO session_seat_overrides (session_id, seat_id, student_id)
+                    VALUES (?, ?, ?)
+                    ON DUPLICATE KEY UPDATE student_id = VALUES(student_id)
+                ")->execute([$sessionId, $targetSeatId, $studentId]);
+
                 // Purger les overrides des séances strictement postérieures
                 $db->prepare("
                     DELETE sso FROM session_seat_overrides sso
