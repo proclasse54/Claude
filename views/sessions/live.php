@@ -466,7 +466,7 @@ async function moveSeat(studentId, targetSeatId) {
     if (tgtPayload.occupied) setSeatOccupied(tgtEl, tgtPayload); else setSeatEmpty(tgtEl);
     seatStudentMap[sourceSeatId] = srcPayload.studentId ? parseInt(srcPayload.studentId) : null;
     seatStudentMap[targetSeatId] = tgtPayload.studentId ? parseInt(tgtPayload.studentId) : null;
-    alert('Déplacement non enregistré.\n\nDétail : ' + e.message);
+    alert('Déplacement non enregistré.\n\nDétail : ' + e.message);
   }
 }
 
@@ -790,6 +790,10 @@ a.live-nav-btn:focus-visible::after {
   z-index: 10000;
   max-width: min(480px, calc(100vw - var(--space-8)));
   animation: toastIn 250ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+/* CORRECTIF : [hidden] doit l'emporter sur display:flex */
+.session-expired-toast[hidden] {
+  display: none !important;
 }
 @keyframes toastIn {
   from { opacity: 0; transform: translateX(-50%) translateY(12px); }
