@@ -167,12 +167,6 @@ class SessionController
         $stmtSeats->execute([$session['plan_id'], $session['room_id']]);
         $seatsRaw = $stmtSeats->fetchAll();
 
-        // Récupérer les overrides : on marque EXPLICITEMENT les sièges qui ont
-        // un override, même si student_id = NULL (siège volontairement vidé).
-        // On utilise une sentinelle 'has_override' pour différencier :
-        //   - pas de ligne dans session_seat_overrides  → utiliser le plan
-        //   - ligne présente avec student_id = NULL     → siège vide (override explicite)
-        //   - ligne présente avec student_id = X        → élève X (override)
         $stmtOv = $db->prepare("
             SELECT sso.seat_id,
                    sso.student_id AS override_student_id,
@@ -185,20 +179,18 @@ class SessionController
         $stmtOv->execute([$p['id']]);
         $overrides = [];
         foreach ($stmtOv->fetchAll() as $ov) {
-            $overrides[(int)$ov['seat_id']] = $ov; // présence de la clé = override existe
+            $overrides[(int)$ov['seat_id']] = $ov;
         }
 
         $seats = [];
         foreach ($seatsRaw as $seat) {
             $seatId = (int)$seat['id'];
             if (array_key_exists($seatId, $overrides)) {
-                // Override présent (même si student_id est NULL → siège vidé)
                 $ov = $overrides[$seatId];
-                $seat['student_id'] = $ov['override_student_id']; // peut être null
+                $seat['student_id'] = $ov['override_student_id'];
                 $seat['last_name']  = $ov['last_name']  ?? null;
                 $seat['first_name'] = $ov['first_name'] ?? null;
             } else {
-                // Pas d'override : utiliser la position du plan
                 $seat['student_id'] = $seat['plan_student_id'];
             }
             $seats[] = $seat;
@@ -457,18 +449,15 @@ class SessionController
     }
 
     /**
-     * Effectue un swap atomique de deux lignes dans seating_assignments
-     * en désactivant temporairement les vérifications de clés étrangères
-     * (nécessaire car seat_id a une FK vers seats.id et MySQL ne supporte pas
-     * les contraintes DEFERRABLE comme PostgreSQL).
+     * Swap atomique de deux élèves dans seating_assignments.
      *
-     * Stratégie :
-     *   a. SET FOREIGN_KEY_CHECKS = 0
-     *   b. source  → seat_id temporaire négatif
-     *   c. cible   → seat_id source  (ou suppression si cible vide)
-     *   d. temporaire → seat_id cible
-     *   e. SET FOREIGN_KEY_CHECKS = 1
-     * Le tout dans la même transaction : en cas d'erreur tout est annulé.
+     * Stratégie : on échange les student_id (pas les seat_id) pour éviter
+     * toute violation de la contrainte UNIQUE(seat_id, plan_id).
+     *
+     *   a. source.student_id  →  0  (sentinelle, FK désactivée)
+     *   b. cible.student_id   →  studentId  (ou INSERT si cible vide)
+     *   c. source.student_id  →  targetStudentId  (ou DELETE si vide)
+     *   d. SET FOREIGN_KEY_CHECKS = 1
      */
     private function swapPlanAssignments(
         \PDO $db,
@@ -478,38 +467,47 @@ class SessionController
         int  $targetSeatId,
         ?int $targetStudentId
     ): void {
-        $tmpSeatId = -$sourceSeatId;
-
         $db->exec('SET FOREIGN_KEY_CHECKS = 0');
 
-        // a. source → temporaire
+        // a. Mettre le student_id source à 0 (sentinelle temporaire)
         $db->prepare("
             UPDATE seating_assignments
-            SET seat_id = ?
+            SET student_id = 0
             WHERE seat_id = ? AND plan_id = ? AND student_id = ?
-        ")->execute([$tmpSeatId, $sourceSeatId, $planId, $studentId]);
+        ")->execute([$sourceSeatId, $planId, $studentId]);
 
-        // b. cible → source
+        // b. Placer studentId sur la cible
         if ($targetStudentId !== null) {
+            // La cible est occupée : on met à jour son student_id
             $db->prepare("
                 UPDATE seating_assignments
-                SET seat_id = ?
-                WHERE seat_id = ? AND plan_id = ? AND student_id = ?
-            ")->execute([$sourceSeatId, $targetSeatId, $planId, $targetStudentId]);
-        } else {
-            // Siège cible était vide : supprimer toute ligne résiduelle sur source
-            $db->prepare("
-                DELETE FROM seating_assignments
+                SET student_id = ?
                 WHERE seat_id = ? AND plan_id = ?
-            ")->execute([$sourceSeatId, $planId]);
+            ")->execute([$studentId, $targetSeatId, $planId]);
+        } else {
+            // La cible est vide : INSERT
+            $db->prepare("
+                INSERT INTO seating_assignments (plan_id, seat_id, student_id)
+                VALUES (?, ?, ?)
+                ON DUPLICATE KEY UPDATE student_id = VALUES(student_id)
+            ")->execute([$planId, $targetSeatId, $studentId]);
         }
 
-        // c. temporaire → cible
-        $db->prepare("
-            UPDATE seating_assignments
-            SET seat_id = ?
-            WHERE seat_id = ? AND plan_id = ? AND student_id = ?
-        ")->execute([$targetSeatId, $tmpSeatId, $planId, $studentId]);
+        // c. Résoudre la source (sentinel → 0)
+        if ($targetStudentId !== null) {
+            // La source reçoit l'ancien élève de la cible
+            $db->prepare("
+                UPDATE seating_assignments
+                SET student_id = ?
+                WHERE seat_id = ? AND plan_id = ? AND student_id = 0
+            ")->execute([$targetStudentId, $sourceSeatId, $planId]);
+        } else {
+            // La source était l'unique occupant, on supprime la ligne
+            $db->prepare("
+                DELETE FROM seating_assignments
+                WHERE seat_id = ? AND plan_id = ? AND student_id = 0
+            ")->execute([$sourceSeatId, $planId]);
+        }
 
         $db->exec('SET FOREIGN_KEY_CHECKS = 1');
     }
@@ -555,13 +553,8 @@ class SessionController
 
             if ($scope === 'session') {
                 // ── Override uniquement pour cette séance ──────────────────────
-                //
-                // CORRECTION : on ne peut PAS utiliser COALESCE(sso.student_id, sa.student_id)
-                // car si le siège cible a un override NULL (siège vidé explicitement),
-                // COALESCE retourne sa.student_id du plan → on croit le siège occupé.
-                //
-                // Solution : lire d'abord s'il existe un override sur le siège cible.
-                // Si oui, utiliser sa valeur (même NULL). Sinon, lire le plan.
+                // Lire la valeur effective du siège cible (override en priorité,
+                // puis plan) sans tomber dans le piège COALESCE+NULL.
 
                 $stmtOvTgt = $db->prepare("
                     SELECT student_id, 1 AS has_override
@@ -572,10 +565,8 @@ class SessionController
                 $ovRow = $stmtOvTgt->fetch();
 
                 if ($ovRow) {
-                    // Override existant sur la cible (peut être NULL = siège vidé)
                     $targetStudentId = $ovRow['student_id'] !== null ? (int)$ovRow['student_id'] : null;
                 } else {
-                    // Pas d'override : lire le plan
                     $stmtPlanTgt = $db->prepare("
                         SELECT student_id FROM seating_assignments
                         WHERE seat_id = ? AND plan_id = ?
@@ -600,16 +591,15 @@ class SessionController
             } elseif ($scope === 'plan') {
                 // ── Modification du plan → affecte les futures séances ────────
 
-                // LIRE la position cible dans le plan
                 $stmtTgt = $db->prepare("
-                    SELECT id, student_id FROM seating_assignments
+                    SELECT student_id FROM seating_assignments
                     WHERE seat_id = ? AND plan_id = ?
                 ");
                 $stmtTgt->execute([$targetSeatId, $planId]);
                 $targetRow       = $stmtTgt->fetch();
                 $targetStudentId = $targetRow ? (int)$targetRow['student_id'] : null;
 
-                // PHOTOGRAPHIER les séances antérieures sans override
+                // Photographier les séances antérieures sans override
                 $stmtPastSessions = $db->prepare("
                     SELECT se.id AS session_id,
                            s.id  AS seat_id,
@@ -655,12 +645,12 @@ class SessionController
                     ]);
                 }
 
-                // SWAP atomique (FK désactivées pendant le swap)
+                // Swap atomique via student_id (pas seat_id)
                 $this->swapPlanAssignments(
                     $db, $planId, $sourceSeatId, $studentId, $targetSeatId, $targetStudentId
                 );
 
-                // PURGER les overrides des séances strictement postérieures
+                // Purger les overrides des séances strictement postérieures
                 $db->prepare("
                     DELETE sso FROM session_seat_overrides sso
                     JOIN sessions se ON se.id = sso.session_id
@@ -684,21 +674,20 @@ class SessionController
             } else {
                 // ── scope === 'all' : toutes les séances ──────────────────────
 
-                // Lire la position cible dans le plan
                 $stmtTgt = $db->prepare("
-                    SELECT id, student_id FROM seating_assignments
+                    SELECT student_id FROM seating_assignments
                     WHERE seat_id = ? AND plan_id = ?
                 ");
                 $stmtTgt->execute([$targetSeatId, $planId]);
                 $targetRow       = $stmtTgt->fetch();
                 $targetStudentId = $targetRow ? (int)$targetRow['student_id'] : null;
 
-                // SWAP atomique (FK désactivées pendant le swap)
+                // Swap atomique via student_id (pas seat_id)
                 $this->swapPlanAssignments(
                     $db, $planId, $sourceSeatId, $studentId, $targetSeatId, $targetStudentId
                 );
 
-                // Supprimer TOUS les overrides sur ces deux sièges pour ce plan
+                // Supprimer tous les overrides sur ces deux sièges
                 $db->prepare("
                     DELETE sso FROM session_seat_overrides sso
                     JOIN sessions se ON se.id = sso.session_id
@@ -718,7 +707,6 @@ class SessionController
 
         } catch (\Throwable $e) {
             if ($db->inTransaction()) $db->rollBack();
-            // S'assurer que FK_CHECKS est remis à 1 même en cas d'erreur
             try { $db->exec('SET FOREIGN_KEY_CHECKS = 1'); } catch (\Throwable $ignored) {}
             restore_error_handler();
             Response::json(['error' => $e->getMessage()], 500);
