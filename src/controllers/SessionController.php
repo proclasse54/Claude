@@ -659,8 +659,6 @@ class SessionController
                 ]));
 
                 // ── FIX : inclure les sièges portant un override sur targetStudentId ──
-                // Cas : targetStudentId a été déplacé par une op précédente (scope session)
-                // et son override "fantôme" sur un autre siège ne serait jamais nettoyé.
                 if ($targetStudentId !== null) {
                     $stmtOvTarget = $db->prepare("
                         SELECT seat_id FROM session_seat_overrides
@@ -672,6 +670,24 @@ class SessionController
                         if (!in_array($extraSeatId, $affectedSeats, true)) {
                             $affectedSeats[] = $extraSeatId;
                         }
+                    }
+                }
+
+                // ── Lire TOUS les overrides session existants sur les sièges affectés ──
+                // C'est la base de départ du wantedMap : on préserve l'état visuel courant
+                // pour les sièges non directement impliqués dans ce déplacement.
+                $existingOverrides = [];
+                if (!empty($affectedSeats)) {
+                    $inAff = implode(',', array_fill(0, count($affectedSeats), '?'));
+                    $stmtExistingOv = $db->prepare("
+                        SELECT seat_id, student_id
+                        FROM session_seat_overrides
+                        WHERE session_id = ? AND seat_id IN ($inAff)
+                    ");
+                    $stmtExistingOv->execute(array_merge([$sessionId], $affectedSeats));
+                    foreach ($stmtExistingOv->fetchAll() as $ovRow) {
+                        $existingOverrides[(int)$ovRow['seat_id']] =
+                            $ovRow['student_id'] !== null ? (int)$ovRow['student_id'] : null;
                     }
                 }
 
@@ -731,15 +747,10 @@ class SessionController
                     $targetSeatId     => $studentId,
                 ];
                 if ($sourceSeatId !== $planSourceSeatId) {
-                    // Le siège source visuel n'a pas bougé dans le plan
                     $newPlanMap[$sourceSeatId] = $visualSourcePlanStudentId;
                 }
-                // Les sièges "fantômes" portant targetStudentId en override :
-                // après le swap, targetStudentId va en planSourceSeatId (via le plan).
-                // Ces sièges fantômes doivent revenir à leur valeur plan (inchangée).
                 foreach ($affectedSeats as $seatId) {
                     if (!isset($newPlanMap[$seatId])) {
-                        // Lire la valeur plan pour ce siège (inchangée par le swap)
                         $stmtExtraPlan = $db->prepare("
                             SELECT student_id FROM seating_assignments
                             WHERE seat_id = ? AND plan_id = ?
@@ -750,17 +761,50 @@ class SessionController
                     }
                 }
 
-                // État VOULU visuellement pour la séance courante
-                $wantedMap = [
-                    $targetSeatId => $studentId,
-                ];
-                if ($sourceSeatId !== $planSourceSeatId) {
-                    $wantedMap[$sourceSeatId]     = $visualSourcePlanStudentId;
-                    $wantedMap[$planSourceSeatId] = $targetStudentId;
-                } else {
-                    $wantedMap[$sourceSeatId] = $targetStudentId;
+                // ── État VOULU visuellement pour la séance courante ──
+                // Base : overrides existants (préserve les ops précédentes)
+                $wantedMap = $existingOverrides;
+
+                // Pour les sièges sans override existant, la base est le plan AVANT swap
+                // (on ne touche pas à ce qu'on ne déplace pas)
+                foreach ($affectedSeats as $seatId) {
+                    if (!array_key_exists($seatId, $wantedMap)) {
+                        // Pas d'override existant → la valeur visuelle courante = plan avant swap
+                        // On doit reconstruire le plan avant swap pour ce siège
+                        // planSourceSeatId avait $studentId, targetSeatId avait $targetStudentId,
+                        // les autres sièges sont inchangés → leur newPlanMap = plan avant swap aussi
+                        if ($seatId === $planSourceSeatId) {
+                            $wantedMap[$seatId] = $studentId;
+                        } elseif ($seatId === $targetSeatId) {
+                            $wantedMap[$seatId] = $targetStudentId;
+                        } else {
+                            // siège non modifié par le swap → plan avant = plan après
+                            $wantedMap[$seatId] = $newPlanMap[$seatId] ?? null;
+                        }
+                    }
                 }
-                // Les sièges fantômes : on veut y voir leur occupant plan (plus de doublon)
+
+                // Appliquer le déplacement par-dessus
+                // L'élève déplacé va en targetSeatId
+                $wantedMap[$targetSeatId] = $studentId;
+
+                // Le siège source visuel reçoit l'occupant du targetSeatId
+                // (= ce qu'on voyait en target avant le déplacement)
+                $wantedMap[$sourceSeatId] = $targetStudentId;
+
+                // Si l'élève était visuellement déplacé (override) depuis planSourceSeatId,
+                // planSourceSeatId doit maintenant montrer son occupant plan (après swap = targetStudentId)
+                // mais targetStudentId vient d'aller en sourceSeatId → planSourceSeatId reste vide
+                // sauf si sourceSeatId === planSourceSeatId (pas de décalage visuel)
+                if ($sourceSeatId !== $planSourceSeatId) {
+                    // planSourceSeatId affichait $studentId (via plan), maintenant plan dit targetStudentId
+                    // Pas d'override nécessaire si plan = voulu → on laisse newPlanMap décider
+                    // (targetStudentId est en planSourceSeatId dans le plan après swap)
+                    // On veut visuellement : planSourceSeatId = targetStudentId (idem plan) → pas d'override
+                    $wantedMap[$planSourceSeatId] = $targetStudentId;
+                }
+
+                // Nettoyer les sièges fantômes de targetStudentId
                 foreach ($affectedSeats as $seatId) {
                     if (!isset($wantedMap[$seatId])) {
                         $wantedMap[$seatId] = $newPlanMap[$seatId] ?? null;
