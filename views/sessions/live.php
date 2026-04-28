@@ -448,13 +448,13 @@ async function moveSeat(studentId, targetSeatId) {
 
   const srcPayload = seatMarkupFromData(srcEl);
   const tgtPayload = seatMarkupFromData(tgtEl);
-  const targetStudentId = seatStudentMap[targetSeatId] ?? null;
-
+  const targetStudentId = seatStudentMap[targetSeatId] != null   ? parseInt(seatStudentMap[targetSeatId])   : null;
+  
   setSeatOccupied(tgtEl, srcPayload);
   if (targetStudentId) setSeatOccupied(srcEl, tgtPayload); else setSeatEmpty(srcEl);
 
-  seatStudentMap[targetSeatId] = studentId;
-  seatStudentMap[sourceSeatId] = targetStudentId;
+  seatStudentMap[targetSeatId] = studentId ? parseInt(studentId) : null;
+  seatStudentMap[sourceSeatId] = targetStudentId ? parseInt(targetStudentId) : null;
   clearSelection();
 
   try {
