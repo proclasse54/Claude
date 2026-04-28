@@ -12,9 +12,11 @@
  */
 
 // ── Connexion ─────────────────────────────────────────────────────────────────
-$dsn  = 'mysql:host=localhost;dbname=proclasse;charset=utf8mb4';
-$user = 'root';          // à adapter
-$pass = '';              // à adapter
+$cfg = require __DIR__ . '/../config/database.php';
+$dsn = "mysql:host={$cfg['user']};dbname={$cfg['dbname']};charset={$cfg['charset']}";
+$user = $cfg['user'];          // à adapter
+$pass = $cfg['password'];              // à adapter
+
 
 try {
     $pdo = new PDO($dsn, $user, $pass, [
