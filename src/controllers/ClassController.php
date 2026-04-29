@@ -149,6 +149,22 @@ class ClassController {
                 WHERE sp.class_id = ?
             ")->execute([$id]);
 
+            // Supprimer les session_seat_overrides liés aux séances des plans de la classe
+            $db->prepare("
+                DELETE sso FROM session_seat_overrides sso
+                JOIN sessions se ON se.id = sso.session_id
+                JOIN seating_plans sp ON sp.id = se.plan_id
+                WHERE sp.class_id = ?
+            ")->execute([$id]);
+
+            // Supprimer les session_seats liés aux séances des plans de la classe
+            $db->prepare("
+                DELETE ss FROM session_seats ss
+                JOIN sessions se ON se.id = ss.session_id
+                JOIN seating_plans sp ON sp.id = se.plan_id
+                WHERE sp.class_id = ?
+            ")->execute([$id]);
+
             // Supprimer les séances liées aux plans de la classe
             $db->prepare("
                 DELETE se FROM sessions se
@@ -195,13 +211,21 @@ class ClassController {
         $db = Database::get();
         try {
             $db->exec("SET FOREIGN_KEY_CHECKS = 0");
+            // Données de séances (ordre : dépendants d'abord)
+            $db->exec("TRUNCATE TABLE observations");
+            $db->exec("TRUNCATE TABLE session_seat_overrides");
+            $db->exec("TRUNCATE TABLE session_seats");
+            $db->exec("TRUNCATE TABLE sessions");
+            // Placements et plans
             $db->exec("TRUNCATE TABLE seating_assignments");
             $db->exec("TRUNCATE TABLE seating_plans");
+            // Groupes
             $db->exec("TRUNCATE TABLE group_students");
             $db->exec("TRUNCATE TABLE `groups`");
+            // Élèves et classes
             $db->exec("TRUNCATE TABLE students");
-            $db->exec("TRUNCATE TABLE sessions");
             $db->exec("TRUNCATE TABLE classes");
+            // NB : rooms, seats, school_years → intentionnellement conservés
             $db->exec("SET FOREIGN_KEY_CHECKS = 1");
             Response::json(['ok' => true]);
         } catch (\Throwable $e) {
