@@ -447,18 +447,20 @@ class SessionController
 
     public function apiMoveSeat(array $p): void
     {
-        $data = json_decode(file_get_contents('php://input'), true);
-
+        $data         = json_decode(file_get_contents('php://input'), true);
         $studentId    = (int)($data['student_id']    ?? 0);
         $sourceSeatId = (int)($data['source_seat_id'] ?? 0);
         $targetSeatId = (int)($data['target_seat_id'] ?? 0);
         $sessionId    = (int)$p['id'];
-
-        $rawScope = $data['scope'] ?? 'session';
-        $scope    = in_array($rawScope, ['session', 'plan', 'all'], true) ? $rawScope : 'session';
+        $rawScope     = $data['scope'] ?? 'session';
+        $scope        = in_array($rawScope, ['session', 'forward'], true) ? $rawScope : 'session';
 
         if (!$studentId || !$sourceSeatId || !$targetSeatId || !$sessionId) {
             Response::json(['error' => 'Paramètres manquants'], 400);
+            return;
+        }
+        if ($sourceSeatId === $targetSeatId) {
+            Response::json(['error' => 'Source et cible identiques'], 400);
             return;
         }
 
@@ -467,158 +469,156 @@ class SessionController
         $stmtSes = $db->prepare("SELECT plan_id, `date`, time_start FROM sessions WHERE id = ?");
         $stmtSes->execute([$sessionId]);
         $session = $stmtSes->fetch();
-
         if (!$session) {
             Response::json(['error' => 'Séance introuvable'], 404);
             return;
         }
 
-        $planId      = (int)$session['plan_id'];
-        $sessionDate = $session['date'];
-        $sessionTime = $session['time_start'];
+        // ── Bloquer les séances passées (protection serveur) ──
+        $today       = date('Y-m-d');
+        $currentTime = date('H:i:s');
+        $sesDate     = $session['date'];
+        $sesTime     = $session['time_start'] ?? '00:00:00';
+        $isPast = ($sesDate < $today)
+               || ($sesDate === $today && $sesTime !== null && $sesTime < $currentTime);
+        if ($isPast) {
+            Response::json(['error' => 'Impossible de modifier une séance passée'], 403);
+            return;
+        }
+
+        $planId = (int)$session['plan_id'];
 
         try {
             $db->beginTransaction();
 
-            // Occupant actuel du siège cible dans CETTE séance
-            $stmtTgt = $db->prepare("
-                SELECT student_id FROM session_seats
-                WHERE session_id = ? AND seat_id = ?
-            ");
+            // ── Vérifier que l'élève est bien sur la place source dans cette séance ──
+            $stmtSrcCheck = $db->prepare(
+                "SELECT student_id FROM session_seats WHERE session_id = ? AND seat_id = ?"
+            );
+            $stmtSrcCheck->execute([$sessionId, $sourceSeatId]);
+            $srcRow = $stmtSrcCheck->fetch();
+            if (!$srcRow || (int)$srcRow['student_id'] !== $studentId) {
+                $db->rollBack();
+                Response::json(['error' => "L'élève n'est pas sur la place source dans cette séance"], 422);
+                return;
+            }
+
+            // ── Occupant actuel de la place cible dans cette séance ──
+            $stmtTgt = $db->prepare(
+                "SELECT student_id FROM session_seats WHERE session_id = ? AND seat_id = ?"
+            );
             $stmtTgt->execute([$sessionId, $targetSeatId]);
             $tgtRow          = $stmtTgt->fetch();
             $targetStudentId = ($tgtRow && $tgtRow['student_id'] !== null)
-                               ? (int)$tgtRow['student_id'] : null;
+                               ? (int)$tgtRow['student_id']
+                               : null;
 
-            if ($scope === 'session') {
-                // ── Swap dans session_seats de la séance courante uniquement ──
-                $db->prepare("
-                    UPDATE session_seats SET student_id = ?
-                    WHERE session_id = ? AND seat_id = ?
-                ")->execute([$targetStudentId, $sessionId, $sourceSeatId]);
+            // ── Swap dans la séance courante ──
+            $db->prepare(
+                "UPDATE session_seats SET student_id = ? WHERE session_id = ? AND seat_id = ?"
+            )->execute([$targetStudentId, $sessionId, $sourceSeatId]);
+            $db->prepare(
+                "UPDATE session_seats SET student_id = ? WHERE session_id = ? AND seat_id = ?"
+            )->execute([$studentId, $sessionId, $targetSeatId]);
 
-                $db->prepare("
-                    UPDATE session_seats SET student_id = ?
-                    WHERE session_id = ? AND seat_id = ?
-                ")->execute([$studentId, $sessionId, $targetSeatId]);
+            $skippedSessions = [];
 
-            } elseif ($scope === 'plan') {
-                // ── Swap dans le plan + propagation sur séances >= courante ──
-
-                // Position canonique de l'élève dans le plan (source of truth)
-                $stmtRealSrc = $db->prepare("
-                    SELECT seat_id FROM seating_assignments
-                    WHERE student_id = ? AND plan_id = ?
-                ");
-                $stmtRealSrc->execute([$studentId, $planId]);
-                $realSrcRow = $stmtRealSrc->fetch();
-                if (!$realSrcRow) {
-                    $db->rollBack();
-                    Response::json(['error' => 'Élève introuvable dans le plan'], 404);
-                    return;
-                }
-                $planSourceSeatId = (int)$realSrcRow['seat_id'];
-
-                // Occupant du siège cible dans le plan
-                $stmtPlanTgt = $db->prepare("
-                    SELECT student_id FROM seating_assignments
-                    WHERE seat_id = ? AND plan_id = ?
-                ");
-                $stmtPlanTgt->execute([$targetSeatId, $planId]);
-                $planTgtRow       = $stmtPlanTgt->fetch();
-                $planTargetStudent = $planTgtRow ? (int)$planTgtRow['student_id'] : null;
-
-                // Swap atomique dans seating_assignments
-                $this->swapPlanAssignments(
-                    $db, $planId, $planSourceSeatId, $studentId, $targetSeatId, $planTargetStudent
-                );
-
-                // Propagation : utiliser $planSourceSeatId (siège canonique dans le plan)
-                // et non $sourceSeatId (envoyé par le JS, reflet de la session courante
-                // qui peut diverger du plan après un swap scope=session antérieur).
-                $db->prepare("
-                    UPDATE session_seats ss
-                    JOIN sessions se ON se.id = ss.session_id
-                    SET ss.student_id = ?
-                    WHERE se.plan_id = ?
-                      AND ss.seat_id = ?
+            if ($scope === 'forward') {
+                // ── Séances futures du même plan (strictly après la séance courante) ──
+                $stmtFuture = $db->prepare("
+                    SELECT id, `date`, time_start
+                    FROM sessions
+                    WHERE plan_id = ?
                       AND (
-                            se.date > ?
-                            OR (se.date = ? AND (se.time_start IS NULL OR se.time_start >= ?))
-                          )
-                ")->execute([
-                    $planTargetStudent, $planId, $planSourceSeatId,
-                    $sessionDate, $sessionDate, $sessionTime ?? '00:00:00',
-                ]);
-
-                $db->prepare("
-                    UPDATE session_seats ss
-                    JOIN sessions se ON se.id = ss.session_id
-                    SET ss.student_id = ?
-                    WHERE se.plan_id = ?
-                      AND ss.seat_id = ?
-                      AND (
-                            se.date > ?
-                            OR (se.date = ? AND (se.time_start IS NULL OR se.time_start >= ?))
-                          )
-                ")->execute([
-                    $studentId, $planId, $targetSeatId,
-                    $sessionDate, $sessionDate, $sessionTime ?? '00:00:00',
-                ]);
-
-            } else {
-                // ── scope === 'all' : plan + toutes les séances ──
-
-                // Position canonique de l'élève dans le plan (source of truth)
-                $stmtRealSrc = $db->prepare("
-                    SELECT seat_id FROM seating_assignments
-                    WHERE student_id = ? AND plan_id = ?
+                            `date` > ?
+                        OR (`date` = ? AND (time_start IS NULL OR time_start > ?))
+                      )
+                      AND id != ?
+                    ORDER BY `date`, time_start
                 ");
-                $stmtRealSrc->execute([$studentId, $planId]);
-                $realSrcRow = $stmtRealSrc->fetch();
-                if (!$realSrcRow) {
-                    $db->rollBack();
-                    Response::json(['error' => 'Élève introuvable dans le plan'], 404);
-                    return;
+                $stmtFuture->execute([
+                    $planId,
+                    $sesDate,
+                    $sesDate,
+                    $sesTime,
+                    $sessionId,
+                ]);
+                $futureSessions = $stmtFuture->fetchAll();
+
+                foreach ($futureSessions as $fut) {
+                    $futId = (int)$fut['id'];
+
+                    // Vérifier que l'élève source est bien sur la place source
+                    $stmtFS = $db->prepare(
+                        "SELECT student_id FROM session_seats WHERE session_id = ? AND seat_id = ?"
+                    );
+                    $stmtFS->execute([$futId, $sourceSeatId]);
+                    $futSrcRow = $stmtFS->fetch();
+
+                    if (!$futSrcRow || (int)$futSrcRow['student_id'] !== $studentId) {
+                        $skippedSessions[] = [
+                            'id'     => $futId,
+                            'date'   => $fut['date'],
+                            'time'   => $fut['time_start'],
+                            'reason' => "élève absent de la place source",
+                        ];
+                        continue;
+                    }
+
+                    // Occupant de la cible dans cette séance future
+                    $stmtFT = $db->prepare(
+                        "SELECT student_id FROM session_seats WHERE session_id = ? AND seat_id = ?"
+                    );
+                    $stmtFT->execute([$futId, $targetSeatId]);
+                    $futTgtRow       = $stmtFT->fetch();
+                    $futTargetStudent = ($futTgtRow && $futTgtRow['student_id'] !== null)
+                                       ? (int)$futTgtRow['student_id']
+                                       : null;
+
+                    // Si la cible est occupée par un élève différent de l'occupant attendu → skip
+                    if (
+                        $futTargetStudent !== null
+                        && $targetStudentId !== null
+                        && $futTargetStudent !== $targetStudentId
+                    ) {
+                        $skippedSessions[] = [
+                            'id'     => $futId,
+                            'date'   => $fut['date'],
+                            'time'   => $fut['time_start'],
+                            'reason' => "place cible occupée par un autre élève",
+                        ];
+                        continue;
+                    }
+
+                    // Appliquer le swap
+                    $db->prepare(
+                        "UPDATE session_seats SET student_id = ? WHERE session_id = ? AND seat_id = ?"
+                    )->execute([$futTargetStudent, $futId, $sourceSeatId]);
+                    $db->prepare(
+                        "UPDATE session_seats SET student_id = ? WHERE session_id = ? AND seat_id = ?"
+                    )->execute([$studentId, $futId, $targetSeatId]);
                 }
-                $planSourceSeatId = (int)$realSrcRow['seat_id'];
-
-                $stmtPlanTgt = $db->prepare("
-                    SELECT student_id FROM seating_assignments
-                    WHERE seat_id = ? AND plan_id = ?
-                ");
-                $stmtPlanTgt->execute([$targetSeatId, $planId]);
-                $planTgtRow       = $stmtPlanTgt->fetch();
-                $planTargetStudent = $planTgtRow ? (int)$planTgtRow['student_id'] : null;
-
-                // Swap dans le plan
-                $this->swapPlanAssignments(
-                    $db, $planId, $planSourceSeatId, $studentId, $targetSeatId, $planTargetStudent
-                );
-
-                // Propagation : utiliser $planSourceSeatId (siège canonique dans le plan)
-                // et non $sourceSeatId (envoyé par le JS, reflet de la session courante
-                // qui peut diverger du plan après un swap scope=session antérieur).
-                $db->prepare("
-                    UPDATE session_seats ss
-                    JOIN sessions se ON se.id = ss.session_id
-                    SET ss.student_id = ?
-                    WHERE se.plan_id = ? AND ss.seat_id = ?
-                ")->execute([$planTargetStudent, $planId, $planSourceSeatId]);
-
-                $db->prepare("
-                    UPDATE session_seats ss
-                    JOIN sessions se ON se.id = ss.session_id
-                    SET ss.student_id = ?
-                    WHERE se.plan_id = ? AND ss.seat_id = ?
-                ")->execute([$studentId, $planId, $targetSeatId]);
             }
 
             $db->commit();
+
+            // ── Log si des séances ont été ignorées ──
+            if (!empty($skippedSessions)) {
+                $this->logMoveSeatWarning([
+                    'session_id'       => $sessionId,
+                    'student_id'       => $studentId,
+                    'source_seat_id'   => $sourceSeatId,
+                    'target_seat_id'   => $targetSeatId,
+                    'scope'            => $scope,
+                    'skipped_sessions' => $skippedSessions,
+                ]);
+            }
+
             Response::json([
-                'ok'                 => true,
-                'scope'              => $scope,
+                'ok'                => true,
+                'scope'             => $scope,
                 'swapped_student_id' => $targetStudentId,
+                'skipped_sessions'  => $skippedSessions,
             ]);
 
         } catch (\Throwable $e) {
@@ -657,51 +657,20 @@ class SessionController
     }
 
     /**
-     * Swap atomique de deux élèves dans seating_assignments.
+     * Insère un warning dans app_logs pour un déplacement partiellement propagé.
+     * Remplace swapPlanAssignments() (supprimée).
      */
-    private function swapPlanAssignments(
-        \PDO $db,
-        int  $planId,
-        int  $sourceSeatId,
-        int  $studentId,
-        int  $targetSeatId,
-        ?int $targetStudentId
-    ): void {
-        $db->exec('SET FOREIGN_KEY_CHECKS = 0');
-
-        $db->prepare("
-            UPDATE seating_assignments
-            SET student_id = 0
-            WHERE seat_id = ? AND plan_id = ? AND student_id = ?
-        ")->execute([$sourceSeatId, $planId, $studentId]);
-
-        if ($targetStudentId !== null) {
-            $db->prepare("
-                UPDATE seating_assignments
-                SET student_id = ?
-                WHERE seat_id = ? AND plan_id = ?
-            ")->execute([$studentId, $targetSeatId, $planId]);
-        } else {
-            $db->prepare("
-                INSERT INTO seating_assignments (plan_id, seat_id, student_id)
-                VALUES (?, ?, ?)
-                ON DUPLICATE KEY UPDATE student_id = VALUES(student_id)
-            ")->execute([$planId, $targetSeatId, $studentId]);
+    private function logMoveSeatWarning(array $details): void
+    {
+        try {
+            Database::get()
+                ->prepare(
+                    "INSERT INTO app_logs (level, category, action, details)
+                     VALUES ('warning', 'seats', 'move_seat_partial', ?)"
+                )
+                ->execute([json_encode($details, JSON_UNESCAPED_UNICODE)]);
+        } catch (\Throwable $_) {
+            // silencieux : le log ne doit pas faire échouer la requête principale
         }
-
-        if ($targetStudentId !== null) {
-            $db->prepare("
-                UPDATE seating_assignments
-                SET student_id = ?
-                WHERE seat_id = ? AND plan_id = ? AND student_id = 0
-            ")->execute([$targetStudentId, $sourceSeatId, $planId]);
-        } else {
-            $db->prepare("
-                DELETE FROM seating_assignments
-                WHERE seat_id = ? AND plan_id = ? AND student_id = 0
-            ")->execute([$sourceSeatId, $planId]);
-        }
-
-        $db->exec('SET FOREIGN_KEY_CHECKS = 1');
     }
 }

@@ -170,28 +170,39 @@ ob_start();
 <!-- ================================================
      MODALE SCOPE : session / futures / toutes
      ================================================ -->
-<div id="scopeModal" class="scope-modal-overlay"
-     role="dialog" aria-modal="true" aria-labelledby="scopeModalTitle">
-  <div class="scope-modal">
-    <h3 id="scopeModalTitle">Déplacer <span id="scopeStudentName"></span></h3>
-    <p class="scope-modal-sub">Ce déplacement doit-il affecter :</p>
-
-    <div class="scope-modal-actions">
-      <button class="btn btn-primary" id="scopeBtnSession">
-        &#128197; Cette séance uniquement
-        <small>Les autres séances ne bougent pas</small>
+<div id="scopeModal" class="scope-modal" role="dialog" aria-modal="true" aria-labelledby="scopeModalTitle" hidden>
+  <div class="scope-modal-box">
+    <p class="scope-modal-title" id="scopeModalTitle">
+      Déplacer <strong id="scopeStudentName"></strong>
+    </p>
+    <p class="scope-modal-subtitle">Ce déplacement doit-il affecter :</p>
+    <div class="scope-modal-btns">
+      <button id="scopeBtnSession" class="scope-btn" type="button">
+        <span class="scope-btn-icon">📅</span>
+        <span class="scope-btn-label">Cette séance uniquement</span>
+        <span class="scope-btn-hint">Les autres séances ne sont pas modifiées</span>
       </button>
-      <button class="btn btn-secondary" id="scopeBtnPlan">
-        &#9193; Les futures séances
-        <small>Séances passées conservées, futures réinitialisées</small>
-      </button>
-      <button class="btn btn-secondary" id="scopeBtnAll">
-        &#128506;&#65039; Toutes les séances
-        <small>Passées et futures réinitialisées sur ce siège</small>
+      <button id="scopeBtnForward" class="scope-btn scope-btn--primary" type="button">
+        <span class="scope-btn-icon">⏩</span>
+        <span class="scope-btn-label">Cette séance + les suivantes</span>
+        <span class="scope-btn-hint">Les séances passées ne sont jamais modifiées</span>
       </button>
     </div>
+    <button id="scopeBtnCancel" class="scope-cancel-btn" type="button">✕ Annuler</button>
+  </div>
+</div>
 
-    <button class="scope-modal-cancel" id="scopeBtnCancel" aria-label="Annuler">&#x2715; Annuler</button>
+<div id="skippedModal" class="scope-modal" role="dialog" aria-modal="true" aria-labelledby="skippedModalTitle" hidden>
+  <div class="scope-modal-box">
+    <p class="scope-modal-title" id="skippedModalTitle">⚠️ Propagation partielle</p>
+    <p class="scope-modal-subtitle">
+      Le déplacement n'a pas pu être appliqué sur certaines séances car
+      les élèves n'étaient pas aux places attendues :
+    </p>
+    <ul id="skippedList" class="skipped-list"></ul>
+    <button id="skippedClose" class="scope-btn scope-btn--primary" type="button" style="margin-top:var(--space-4)">
+      Compris
+    </button>
   </div>
 </div>
 
@@ -369,99 +380,127 @@ function refreshTags(studentId) {
     .catch(() => {});
 }
 
-// --------------------------------------------------
-// MODALE SCOPE
-// --------------------------------------------------
-const scopeModal  = document.getElementById('scopeModal');
-const scopeNameEl = document.getElementById('scopeStudentName');
+// ──────────────────────────────────────────────
+// MODALE SCOPE (2 boutons : session / forward)
+// ──────────────────────────────────────────────
+const scopeModal   = document.getElementById('scopeModal');
+const skippedModal = document.getElementById('skippedModal');
+const scopeNameEl  = document.getElementById('scopeStudentName');
+let _scopeResolve  = null;
 
-let _scopeResolve = null;
-
-function scopeOpen(studentName) {
+function scopeOpen(studentName, isSwap) {
   scopeNameEl.textContent = studentName;
-  scopeModal.classList.add('is-open');
+  // Adapter le libellé selon permutation ou déplacement vers place vide
+  const subtitle = scopeModal.querySelector('.scope-modal-subtitle');
+  if (subtitle) {
+    subtitle.textContent = isSwap
+      ? 'Cette permutation doit-elle affecter :'
+      : 'Ce déplacement doit-il affecter :';
+  }
+  scopeModal.hidden = false;
   document.getElementById('scopeBtnSession').focus();
 }
+function scopeClose() { scopeModal.hidden = true; }
 
-function scopeClose() {
-  scopeModal.classList.remove('is-open');
-}
-
-function askScope(studentName) {
+function askScope(studentName, isSwap = false) {
   if (_sessionExpired) return Promise.resolve(null);
   return new Promise(resolve => {
     _scopeResolve = resolve;
-    scopeOpen(studentName);
+    scopeOpen(studentName, isSwap);
   });
 }
-
 function scopeResolve(value) {
   scopeClose();
   if (_scopeResolve) { _scopeResolve(value); _scopeResolve = null; }
 }
 
 document.getElementById('scopeBtnSession').addEventListener('click', () => scopeResolve('session'));
-document.getElementById('scopeBtnPlan').addEventListener('click',    () => scopeResolve('plan'));
-document.getElementById('scopeBtnAll').addEventListener('click',     () => scopeResolve('all'));
+document.getElementById('scopeBtnForward').addEventListener('click', () => scopeResolve('forward'));
 document.getElementById('scopeBtnCancel').addEventListener('click',  () => scopeResolve(null));
 
-scopeModal.addEventListener('click', e => {
-  if (e.target === scopeModal) scopeResolve(null);
-});
-
+scopeModal.addEventListener('click', e => { if (e.target === scopeModal) scopeResolve(null); });
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && scopeModal.classList.contains('is-open')) {
-    e.stopImmediatePropagation();
-    scopeResolve(null);
+  if (e.key === 'Escape') {
+    if (!scopeModal.hidden)   { e.stopImmediatePropagation(); scopeResolve(null); }
+    if (!skippedModal.hidden) { e.stopImmediatePropagation(); skippedModal.hidden = true; }
   }
 });
 
+// ── Modal avertissement séances ignorées ──
+function showSkippedWarning(skipped) {
+  const list = document.getElementById('skippedList');
+  list.innerHTML = skipped.map(s => {
+    const d = new Date(s.date);
+    const dateStr = d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+    const timeStr = s.time ? ' ' + s.time.substring(0, 5) : '';
+    return `<li><strong>${dateStr}${timeStr}</strong> — ${s.reason}</li>`;
+  }).join('');
+  skippedModal.hidden = false;
+  document.getElementById('skippedClose').focus();
+}
+document.getElementById('skippedClose').addEventListener('click', () => { skippedModal.hidden = true; });
+skippedModal.addEventListener('click', e => { if (e.target === skippedModal) skippedModal.hidden = true; });
+
+// ──────────────────────────────────────────────
+// API persistMove (scope: 'session' | 'forward')
+// ──────────────────────────────────────────────
 async function persistMove(studentId, sourceSeatId, targetSeatId, scope) {
   return apiFetch(`/api/sessions/${SESSION_ID}/move-seat`, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({
-      student_id:     studentId,
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({
+      student_id:    studentId,
       source_seat_id: sourceSeatId,
       target_seat_id: targetSeatId,
-      scope:          scope
-    })
+      scope:          scope,
+    }),
   });
 }
 
+// ──────────────────────────────────────────────
+// moveSeat : swap ou déplacement vers place vide
+// ──────────────────────────────────────────────
 async function moveSeat(studentId, targetSeatId) {
   if (_sessionExpired) return;
 
   const sourceSeatId = parseInt(
     Object.keys(seatStudentMap).find(k => seatStudentMap[k] === studentId)
   );
-
   if (isNaN(sourceSeatId) || sourceSeatId === targetSeatId) return;
 
   const srcEl = getSeatEl(sourceSeatId);
   const tgtEl = getSeatEl(targetSeatId);
   if (!srcEl || !tgtEl) return;
 
-  const srcName = srcEl.dataset.studentName || 'l\'élève';
-  const scope = await askScope(srcName);
+  const targetStudentId = seatStudentMap[targetSeatId] != null
+    ? parseInt(seatStudentMap[targetSeatId])
+    : null;
+
+  const isSwap    = targetStudentId !== null;
+  const srcName   = srcEl.dataset.studentName || 'l\'élève';
+  const scope     = await askScope(srcName, isSwap);
   if (!scope) return;
 
+  // Optimistic UI
   const srcPayload = seatMarkupFromData(srcEl);
   const tgtPayload = seatMarkupFromData(tgtEl);
-  const targetStudentId = seatStudentMap[targetSeatId] != null   ? parseInt(seatStudentMap[targetSeatId])   : null;
-  
   setSeatOccupied(tgtEl, srcPayload);
-  if (targetStudentId) setSeatOccupied(srcEl, tgtPayload); else setSeatEmpty(srcEl);
-
+  if (isSwap) setSeatOccupied(srcEl, tgtPayload); else setSeatEmpty(srcEl);
   seatStudentMap[targetSeatId] = studentId ? parseInt(studentId) : null;
-  seatStudentMap[sourceSeatId] = targetStudentId ? parseInt(targetStudentId) : null;
+  seatStudentMap[sourceSeatId] = isSwap ? parseInt(targetStudentId) : null;
   clearSelection();
 
   try {
     const result = await persistMove(studentId, sourceSeatId, targetSeatId, scope);
     if (!result.ok) throw new Error(result.error || 'Erreur inconnue');
+
+    // Avertissement si propagation partielle
+    if (result.skipped_sessions && result.skipped_sessions.length > 0) {
+      showSkippedWarning(result.skipped_sessions);
+    }
   } catch (e) {
     if (_sessionExpired) return;
+    // Rollback optimistic UI
     if (srcPayload.occupied) setSeatOccupied(srcEl, srcPayload); else setSeatEmpty(srcEl);
     if (tgtPayload.occupied) setSeatOccupied(tgtEl, tgtPayload); else setSeatEmpty(tgtEl);
     seatStudentMap[sourceSeatId] = srcPayload.studentId ? parseInt(srcPayload.studentId) : null;
@@ -825,6 +864,23 @@ a.live-nav-btn:focus-visible::after {
   user-select: none;
   filter: grayscale(0.4);
   transition: opacity 300ms ease, filter 300ms ease;
+}
+.skipped-list {
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: 260px;
+  overflow-y: auto;
+}
+.skipped-list li {
+  background: var(--color-warning-highlight, #ddcfc6);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text);
 }
 </style>
 </head>
