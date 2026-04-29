@@ -102,7 +102,7 @@ class SessionController
             return;
         }
 
-        // Navigation précédente / suivante
+        // Navigation précédente / suivante — restreint au même plan_id
         $stmtPrev = $db->prepare("
             SELECT se.id, se.date, se.time_start,
                    COALESCE(g.name, c.name) AS class_name
@@ -110,7 +110,7 @@ class SessionController
             JOIN seating_plans sp ON sp.id = se.plan_id
             JOIN classes c ON c.id = sp.class_id
             LEFT JOIN groups g ON g.id = sp.group_id
-            WHERE c.id = ?
+            WHERE se.plan_id = ?
               AND (
                     se.date < ?
                     OR (se.date = ? AND (se.time_start IS NULL OR se.time_start < ?))
@@ -120,7 +120,7 @@ class SessionController
             LIMIT 1
         ");
         $stmtPrev->execute([
-            $session['raw_class_id'],
+            $session['plan_id'],
             $session['date'],
             $session['date'],
             $session['time_start'] ?? '99:99:99',
@@ -136,7 +136,7 @@ class SessionController
             JOIN seating_plans sp ON sp.id = se.plan_id
             JOIN classes c ON c.id = sp.class_id
             LEFT JOIN groups g ON g.id = sp.group_id
-            WHERE c.id = ?
+            WHERE se.plan_id = ?
               AND (
                     se.date > ?
                     OR (se.date = ? AND se.time_start IS NOT NULL AND se.time_start > ?)
@@ -146,7 +146,7 @@ class SessionController
             LIMIT 1
         ");
         $stmtNext->execute([
-            $session['raw_class_id'],
+            $session['plan_id'],
             $session['date'],
             $session['date'],
             $session['time_start'] ?? '00:00:00',
