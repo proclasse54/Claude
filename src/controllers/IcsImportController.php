@@ -156,11 +156,15 @@ class IcsImportController
                     continue;
                 }
 
+                // Salle indiquée dans le champ LOCATION de l'ICS (fait foi si elle existe en base)
+                $preferredRoomName = trim($ev['location'] ?? '') ?: null;
+
                 $planId = $this->createRandomPlan(
                     $db,
                     $class['id'],
                     $className,
-                    $group ? (int)$group['id'] : null
+                    $group ? (int)$group['id'] : null,
+                    $preferredRoomName
                 );
                 if (!$planId) {
                     $errors[] = "Impossible de créer un plan pour : $className (pas d'élèves ou de salle ?)";
@@ -236,7 +240,15 @@ class IcsImportController
     // Création d'un plan aléatoire
     // ------------------------------------------------------------------
 
-    private function createRandomPlan(\PDO $db, int $classId, string $className, ?int $groupId = null): ?int
+    /**
+     * Crée un plan aléatoire pour une classe ou un groupe.
+     *
+     * Si $preferredRoomName est fourni (issu du champ LOCATION de l'ICS),
+     * la salle correspondante en base est utilisée en priorité, sans vérification
+     * de capacité (la salle ICS fait foi). En l'absence de correspondance,
+     * la logique existante de sélection automatique de salle s'applique.
+     */
+    private function createRandomPlan(\PDO $db, int $classId, string $className, ?int $groupId = null, ?string $preferredRoomName = null): ?int
     {
         // 1. Récupérer les élèves — du groupe si précisé, sinon de toute la classe
         if ($groupId) {
@@ -261,17 +273,31 @@ class IcsImportController
 
         $count = count($studentIds);
 
-        // 2. Chercher une salle avec assez de sièges
-        $stmtRoom = $db->prepare(
-            "SELECT r.id FROM rooms r
-            INNER JOIN seats s ON s.room_id = r.id
-            GROUP BY r.id
-            HAVING COUNT(s.id) >= ?
-            ORDER BY COUNT(s.id) ASC
-            LIMIT 1"
-        );
-        $stmtRoom->execute([$count]);
-        $room = $stmtRoom->fetch();
+        // 2. Si une salle est indiquée dans le champ LOCATION de l'ICS et qu'elle existe
+        // en base (comparaison insensible à la casse), elle fait foi et est utilisée
+        // directement, sans vérifier sa capacité.
+        $room = null;
+        if ($preferredRoomName !== null && trim($preferredRoomName) !== '') {
+            $stmtPreferred = $db->prepare(
+                "SELECT id FROM rooms WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) LIMIT 1"
+            );
+            $stmtPreferred->execute([$preferredRoomName]);
+            $room = $stmtPreferred->fetch();
+        }
+
+        // 3. Sinon, chercher une salle avec assez de sièges (logique existante)
+        if (!$room) {
+            $stmtRoom = $db->prepare(
+                "SELECT r.id FROM rooms r
+                INNER JOIN seats s ON s.room_id = r.id
+                GROUP BY r.id
+                HAVING COUNT(s.id) >= ?
+                ORDER BY COUNT(s.id) ASC
+                LIMIT 1"
+            );
+            $stmtRoom->execute([$count]);
+            $room = $stmtRoom->fetch();
+        }
 
         if (!$room) {
             $room = $db->query("SELECT id FROM rooms ORDER BY id LIMIT 1")->fetch();
@@ -288,13 +314,13 @@ class IcsImportController
 
         $roomId = (int)$room['id'];
 
-        // 3. Créer le plan — avec group_id si c'est un plan de groupe
+        // 4. Créer le plan — avec group_id si c'est un plan de groupe
         $db->prepare(
             "INSERT INTO seating_plans (class_id, group_id, room_id, name) VALUES (?, ?, ?, ?)"
         )->execute([$classId, $groupId, $roomId, "Plan aléatoire - $className"]);
         $planId = (int)$db->lastInsertId();
 
-        // 4. Récupérer les sièges
+        // 5. Récupérer les sièges
         $stmtSeats = $db->prepare(
             "SELECT id FROM seats WHERE room_id = ? ORDER BY row_index, col_index"
         );
@@ -303,7 +329,7 @@ class IcsImportController
 
         if (empty($seatIds)) { return null; }
 
-        // 5. Mélange et affectation
+        // 6. Mélange et affectation
         shuffle($studentIds);
         shuffle($seatIds);
 
