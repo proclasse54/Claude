@@ -272,9 +272,7 @@
     <div class="bilan-header">
         <?php
             // Construction du chemin photo (même convention que PhotoController)
-            $photoUrl = '/photo?class=' . urlencode($student['class_name'])
-                      . '&nom='    . urlencode(mb_strtoupper($student['last_name'], 'UTF-8'))
-                      . '&prenom=' . urlencode($student['first_name']);
+            $photoUrl = '/photo?student_id=' . (int)$studentId;                      
         ?>
         <img src="<?= htmlspecialchars($photoUrl) ?>" alt="Photo"
              class="bilan-photo"
