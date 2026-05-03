@@ -1190,6 +1190,10 @@ deleteSessionConfirm.addEventListener('click', () => {
       </div>
     </div>
     <div class="student-modal-footer">
+      <!-- Bouton Bilan : href mis à jour dynamiquement à l'ouverture de la modale -->
+      <a href="#" id="modalBilanBtn" class="btn btn-ghost btn-sm" target="_blank" rel="noopener noreferrer" title="Ouvrir le bilan de l'élève dans un nouvel onglet">
+        📊 Bilan
+      </a>
       <button class="btn btn-danger btn-sm" id="modalRemoveBtn">
         &#128465; Retirer du plan de salle
       </button>
@@ -1211,6 +1215,7 @@ const modalName     = document.getElementById('modalStudentName');
 const modalClass    = document.getElementById('modalClass');
 const modalBody     = document.getElementById('modalBody');
 const modalRemoveBtn = document.getElementById('modalRemoveBtn');
+const modalBilanBtn  = document.getElementById('modalBilanBtn');  // bouton 📊 Bilan
 const modalPhotoPanel     = document.getElementById('modalPhotoPanel');
 const modalPhotoInput     = document.getElementById('modalPhotoInput');
 const modalPhotoPreview   = document.getElementById('modalPhotoPreview');
@@ -1385,7 +1390,7 @@ function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 /**
  * Obtenir les coordonnées souris/tactile relatives au canvas.
  * Utilise getBoundingClientRect() ici (correct car appelé lors d'un événement
- * interactif, donc le canvas est forcément visible et son layout est stable).
+ * interactif, donc le canvas est forcément visible et son layout est stable)
  */
 function getPos(e) {
   const rect = cropCanvas.getBoundingClientRect();
@@ -1609,6 +1614,9 @@ let _modalSeatId    = null;
 function openStudentModal(studentId, seatId, studentName) {
   _modalStudentId = studentId;
   _modalSeatId    = seatId;
+
+  // Mettre à jour le lien 📊 Bilan avec l'id de l'élève courant
+  modalBilanBtn.href = '/students/' + studentId + '/bilan';
 
   switchTab('donnees');
 
