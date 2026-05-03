@@ -29,7 +29,7 @@
   <?php else: ?>
   <table class="data-table">
     <thead>
-      <tr><th>Nom</th><th>Prénom</th><th>Classe</th><th>Niveau</th><th>INE</th></tr>
+      <tr><th>Nom</th><th>Prénom</th><th>Classe</th><th>Niveau</th><th>INE</th><th></th></tr>
     </thead>
     <tbody>
       <?php foreach ($students as $s): ?>
@@ -39,6 +39,12 @@
         <td><?= htmlspecialchars($s['class_name'] ?? '') ?></td>
         <td><?= htmlspecialchars($s['level'] ?? '') ?></td>
         <td class="text-muted text-sm"><?= htmlspecialchars($s['pronote_id'] ?? '') ?></td>
+        <td>
+          <!-- Lien vers le bilan individuel de l'élève -->
+          <a href="/students/<?= (int)$s['id'] ?>/bilan" class="btn btn-sm btn-ghost" title="Bilan de <?= htmlspecialchars($s['first_name'] . ' ' . $s['last_name']) ?>">
+            📊 Bilan
+          </a>
+        </td>
       </tr>
       <?php endforeach; ?>
     </tbody>
