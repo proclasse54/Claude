@@ -137,6 +137,9 @@ $router->add('DELETE', '/api/students/{id}/photo',                           fn(
 $router->add('GET',    '/api/students/{id}/photo-crop',                      fn($p)=> (new StudentController)->apiGetCrop($p));
 $router->add('POST',   '/api/students/{id}/photo-crop',                      fn($p)=> (new StudentController)->apiSaveCrop($p));
 
+// Bilan élève (vue conseil de classe)
+$router->add('GET',    '/students/{id}/bilan',                               fn($p)=> (new StudentController)->bilan($p));
+$router->add('GET',    '/api/students/{id}/bilan',                           fn($p)=> (new StudentController)->apiBilan($p));
 
 // Imports
 $router->add('GET',     '/import',                                           fn($p) => (new ImportController)->index($p));

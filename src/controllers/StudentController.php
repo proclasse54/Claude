@@ -311,4 +311,198 @@ class StudentController
         ]);
     }
 
+    // ──────────────────────────────────────────────────────────────────────────
+    // BILAN ÉLÈVE — Vue conseil de classe
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /**
+     * bilan() : affiche la page HTML de bilan d'un élève.
+     * URL : GET /students/{id}/bilan
+     * Passe les données de base à la vue (élève + classe).
+     * Les données d'observations sont chargées côté client via apiBilan().
+     */
+    public function bilan(array $p): void
+    {
+        $studentId = (int)($p['id'] ?? 0);
+        $db = Database::get();
+
+        $stmt = $db->prepare("
+            SELECT s.id, s.first_name, s.last_name, s.first_name_usage,
+                   s.gender, s.is_repeating, s.support_project, s.allergies,
+                   s.options, s.groups,
+                   c.name AS class_name, c.id AS class_id
+            FROM students s
+            JOIN classes c ON c.id = s.class_id
+            WHERE s.id = ?
+        ");
+        $stmt->execute([$studentId]);
+        $student = $stmt->fetch();
+
+        if (!$student) {
+            http_response_code(404);
+            echo '<p>Élève introuvable.</p>';
+            return;
+        }
+
+        require ROOT . '/views/student_bilan.php';
+    }
+
+    /**
+     * apiBilan() : retourne en JSON toutes les observations d'un élève
+     * sur une période donnée, agrégées par tag + chronologie séance par séance.
+     *
+     * URL : GET /api/students/{id}/bilan?from=YYYY-MM-DD&to=YYYY-MM-DD
+     *
+     * Réponse JSON :
+     * {
+     *   student   : { id, first_name, last_name, class_name },
+     *   period    : { from, to },
+     *   stats     : { total_sessions, sessions_with_obs, total_observations },
+     *   tag_counts: [ { tag, icon, color, count }, ... ],   // trié par count DESC
+     *   timeline  : [                                        // 1 entrée par séance
+     *     { session_id, date, time_start, subject, observations: [ {tag, icon, color, note}, ... ] },
+     *     ...
+     *   ]
+     * }
+     */
+    public function apiBilan(array $p): void
+    {
+        $studentId = (int)($p['id'] ?? 0);
+        if (!$studentId) {
+            Response::json(['error' => 'Élève introuvable'], 404);
+            return;
+        }
+
+        // Paramètres de période (optionnels)
+        $from = $_GET['from'] ?? null;
+        $to   = $_GET['to']   ?? null;
+
+        // Validation basique du format de date
+        $validateDate = fn(?string $d): bool => $d !== null && preg_match('/^\d{4}-\d{2}-\d{2}$/', $d) === 1;
+        if ($from !== null && !$validateDate($from)) { Response::json(['error' => 'Paramètre from invalide'], 400); return; }
+        if ($to   !== null && !$validateDate($to))   { Response::json(['error' => 'Paramètre to invalide'],   400); return; }
+
+        $db = Database::get();
+
+        // Vérifier que l'élève existe
+        $stmt = $db->prepare("
+            SELECT s.id, s.first_name, s.last_name, c.name AS class_name
+            FROM students s
+            JOIN classes c ON c.id = s.class_id
+            WHERE s.id = ?
+        ");
+        $stmt->execute([$studentId]);
+        $student = $stmt->fetch();
+        if (!$student) { Response::json(['error' => 'Élève introuvable'], 404); return; }
+
+        // Construction de la clause WHERE sur la période
+        $wherePeriod = '';
+        $bindPeriod  = [];
+        if ($from) { $wherePeriod .= ' AND se.date >= ?'; $bindPeriod[] = $from; }
+        if ($to)   { $wherePeriod .= ' AND se.date <= ?'; $bindPeriod[] = $to;   }
+
+        // ── Observations avec info séance ────────────────────────────────────
+        $sql = "
+            SELECT
+                o.id        AS obs_id,
+                o.tag,
+                o.note,
+                t.icon,
+                t.color,
+                se.id       AS session_id,
+                se.date,
+                se.time_start,
+                se.subject
+            FROM observations o
+            JOIN sessions se ON se.id = o.session_id
+            LEFT JOIN tags t ON t.label = o.tag
+            WHERE o.student_id = ?
+            $wherePeriod
+            ORDER BY se.date ASC, se.time_start ASC, o.id ASC
+        ";
+        $stmtObs = $db->prepare($sql);
+        $stmtObs->execute(array_merge([$studentId], $bindPeriod));
+        $rows = $stmtObs->fetchAll();
+
+        // ── Nombre de séances distinctes sur la période (avec ou sans obs) ──
+        // (pour calculer le taux de présence / implication)
+        $sqlSessions = "
+            SELECT COUNT(DISTINCT se.id) AS cnt
+            FROM sessions se
+            JOIN seating_plans sp ON sp.id = se.plan_id
+            WHERE sp.class_id = (
+                SELECT class_id FROM students WHERE id = ?
+            )
+            $wherePeriod
+        ";
+        $stmtSessions = $db->prepare($sqlSessions);
+        $stmtSessions->execute(array_merge([$studentId], $bindPeriod));
+        $totalSessions = (int)($stmtSessions->fetchColumn() ?? 0);
+
+        // ── Agrégation ───────────────────────────────────────────────────────
+        $tagCounts   = []; // [ tag => ['tag'=>, 'icon'=>, 'color'=>, 'count'=>] ]
+        $timeline    = []; // [ session_id => ['session_id'=>, 'date'=>, ... , 'observations'=>[]] ]
+        $sessionIds  = []; // session_ids avec au moins 1 obs
+
+        foreach ($rows as $row) {
+            // Comptage par tag
+            $tag = $row['tag'];
+            if (!isset($tagCounts[$tag])) {
+                $tagCounts[$tag] = [
+                    'tag'   => $tag,
+                    'icon'  => $row['icon']  ?? '',
+                    'color' => $row['color'] ?? '#7a7974',
+                    'count' => 0,
+                ];
+            }
+            $tagCounts[$tag]['count']++;
+
+            // Timeline
+            $sid = (int)$row['session_id'];
+            if (!isset($timeline[$sid])) {
+                $timeline[$sid] = [
+                    'session_id'  => $sid,
+                    'date'        => $row['date'],
+                    'time_start'  => $row['time_start'],
+                    'subject'     => $row['subject'],
+                    'observations'=> [],
+                ];
+                $sessionIds[$sid] = true;
+            }
+            $timeline[$sid]['observations'][] = [
+                'obs_id' => (int)$row['obs_id'],
+                'tag'    => $tag,
+                'icon'   => $row['icon']  ?? '',
+                'color'  => $row['color'] ?? '#7a7974',
+                'note'   => $row['note'],
+            ];
+        }
+
+        // Trier les tags par count DESC
+        usort($tagCounts, fn($a, $b) => $b['count'] <=> $a['count']);
+
+        // Réindexer la timeline en tableau (ordre chronologique, déjà trié par SQL)
+        $timeline = array_values($timeline);
+
+        Response::json([
+            'student' => [
+                'id'         => (int)$student['id'],
+                'first_name' => $student['first_name'],
+                'last_name'  => $student['last_name'],
+                'class_name' => $student['class_name'],
+            ],
+            'period' => [
+                'from' => $from,
+                'to'   => $to,
+            ],
+            'stats' => [
+                'total_sessions'    => $totalSessions,
+                'sessions_with_obs' => count($sessionIds),
+                'total_observations'=> count($rows),
+            ],
+            'tag_counts' => array_values($tagCounts),
+            'timeline'   => $timeline,
+        ]);
+    }
+
 }
