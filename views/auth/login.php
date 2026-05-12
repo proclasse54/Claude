@@ -117,14 +117,6 @@ $pageTitle = 'Connexion — ProClasse';
 
     <p class="login-footer">ProClasse &mdash; gestion de salle de classe</p>
   </div>
-
-  <script>
-    // Respect du mode sombre système
-    (function(){
-      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        document.documentElement.setAttribute('data-theme', 'dark');
-      }
-    })();
-  </script>
+  <script src="/js/login-theme.js"></script>
 </body>
 </html>

@@ -14,7 +14,7 @@ RewriteRule ^ index.php [QSA,L]
 <IfModule mod_headers.c>
     Header always set Content-Security-Policy-Report-Only "\
         default-src 'self'; \
-        script-src 'self' \
+        script-src 'self'; \
         style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; \
         font-src 'self' https://fonts.gstatic.com; \
         img-src 'self' data:; \
