@@ -1,0 +1,226 @@
+/* ═══ Page séances ═══ */
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-bottom: 1rem;
+}
+.page-header-actions {
+  display: flex;
+  gap: .5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Import ICS */
+.ics-block {
+  margin-bottom: 1.5rem;
+}
+.ics-block summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.ics-hint {
+  margin: .5rem 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+.ics-form {
+  display: flex;
+  gap: .5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.ics-result {
+  margin-top: .5rem;
+}
+
+/* Toggle vue */
+.view-toggle {
+  display: flex;
+  gap: .5rem;
+  margin-bottom: 1rem;
+}
+
+/* Vue liste — infos */
+.sessions-meta {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin-bottom: .5rem;
+}
+.session-btn-disabled {
+  opacity: .4;
+  cursor: default;
+}
+.sessions-pagination {
+  display: flex;
+  gap: .5rem;
+  align-items: center;
+  margin-top: .75rem;
+}
+
+/* Vue semaine — navigation */
+.week-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+/* Vue semaine — légende */
+.week-legend {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin-bottom: .5rem;
+}
+
+/* Sélection drag sur le calendrier */
+.drag-selection {
+  position: absolute;
+  left: 2px; right: 2px;
+  background: color-mix(in oklch, var(--primary) 25%, transparent);
+  border: 2px solid var(--primary);
+  border-radius: var(--radius-sm);
+  pointer-events: none;
+  z-index: 10;
+  transition: none;
+}
+.week-col-body {
+  position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.week-col-body:not(.dragging) {
+  cursor: cell;
+}
+.week-hover-bar {
+  position: absolute;
+  left: 2px; right: 2px;
+  background: color-mix(in oklch, var(--primary) 20%, transparent);
+  border: 1px dashed color-mix(in oklch, var(--primary) 50%, transparent);
+  border-radius: var(--radius-sm);
+  pointer-events: none;
+  z-index: 5;
+  transition: top 80ms ease;
+}
+.week-selected-bar {
+  position: absolute;
+  left: 2px; right: 2px;
+  background: color-mix(in oklch, var(--primary) 18%, transparent);
+  border: 1.5px solid color-mix(in oklch, var(--primary) 55%, transparent);
+  border-radius: var(--radius-sm);
+  pointer-events: none;
+  z-index: 6;
+}
+
+/* Modale nouvelle séance */
+.ns-modal-box {
+  width: min(580px, 95vw);
+}
+.ns-slot-banner {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  background: var(--color-primary-highlight, #e8f4f4);
+  border-radius: var(--radius-md);
+  padding: .5rem .75rem;
+  margin-bottom: var(--space-4);
+  font-size: var(--text-sm);
+}
+.ns-slot-banner-icon {
+  font-size: 1.1em;
+}
+.ns-slot-label {
+  font-weight: 600;
+}
+.ns-slot-unlock {
+  margin-left: auto;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.ns-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+.ns-manual-slot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.ns-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+.ns-label-optional {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+.ns-recurrence {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.ns-recurrence-row {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  cursor: pointer;
+}
+.ns-rec-count {
+  width: 4rem;
+}
+.ns-rec-until {
+  width: auto;
+}
+.ns-form-footer {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--divider);
+}
+.ns-plan-warning {
+  margin-top: var(--space-2);
+  color: var(--danger);
+  font-size: var(--text-sm);
+}
+
+/* Modale suppression */
+.delete-modal-box {
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.delete-modal-title {
+  margin-bottom: var(--space-4);
+}
+.delete-modal-footer {
+  display: flex;
+  gap: .5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  margin-top: var(--space-4);
+}
+
+/* Bandeau créneau slot */
+.week-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: .25rem;
+}
+.week-card-room {
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+.week-card--no-plan {
+  opacity: .6;
+  cursor: default;
+}

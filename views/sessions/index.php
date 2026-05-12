@@ -1,29 +1,34 @@
-<div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem;">
+<?php
+// Lien CSS spécifique à la page séances
+$extraCss = '/css/sessions.css';
+?>
+
+<div class="page-header">
   <h1>Séances</h1>
-  <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
-    <button onclick="openNewSessionModal()" class="btn btn-primary">+ Nouvelle séance</button>
+  <div class="page-header-actions">
+    <button id="btnOpenNewSession" class="btn btn-primary">+ Nouvelle séance</button>
   </div>
 </div>
 
 <!-- Import ICS -->
-<details style="margin-bottom:1.5rem;">
-  <summary style="cursor:pointer;font-weight:600;">&#128197; Importer depuis Pronote (ICS)</summary>
-  <p style="margin:.5rem 0;font-size:var(--text-sm);color:var(--color-text-muted);">
+<details class="ics-block">
+  <summary>&#128197; Importer depuis Pronote (ICS)</summary>
+  <p class="ics-hint">
     Exporte ton EDT depuis Pronote &rarr; <em>Mon EDT &rarr; Exporter &rarr; Calendrier (.ics)</em>, puis d&eacute;pose le fichier ici.
   </p>
-  <form id="icsForm" style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+  <form id="icsForm" class="ics-form">
     <label>Fichier <code>.ics</code>
       <input type="file" id="icsFile" name="icsfile" accept=".ics" required>
     </label>
     <button type="submit" class="btn btn-primary">Importer les s&eacute;ances</button>
   </form>
-  <div id="icsResult" style="margin-top:.5rem;"></div>
+  <div id="icsResult" class="ics-result"></div>
 </details>
 
 <!-- ═══ TOGGLE VUE ═══ -->
-<div style="display:flex;gap:.5rem;margin-bottom:1rem;">
-  <button id="btnList" onclick="setView('list')" class="btn btn-view active">☰ Liste</button>
-  <button id="btnWeek" onclick="setView('week')" class="btn btn-view">&#128197; Semaine</button>
+<div class="view-toggle">
+  <button id="btnList" class="btn btn-view active">☰ Liste</button>
+  <button id="btnWeek" class="btn btn-view">&#128197; Semaine</button>
 </div>
 
 <!-- ═══ VUE LISTE ═══ -->
@@ -31,7 +36,7 @@
   <?php if (empty($sessions)): ?>
     <p class="text-muted">Aucune séance &mdash; créez-en une ou importez votre EDT Pronote.</p>
   <?php else: ?>
-    <p style="font-size:var(--text-sm);color:var(--color-text-muted);margin-bottom:.5rem;">
+    <p class="sessions-meta">
       <?= $total ?> séance(s) au total &mdash; page <?= $page ?>/<?= $totalPages ?>
     </p>
     <table class="table">
@@ -49,23 +54,23 @@
             <?php if ($s['plan_id']): ?>
               <?= htmlspecialchars($s['plan_name'] ?? '') ?> (<?= htmlspecialchars($s['room_name'] ?? '') ?>)
             <?php else: ?>
-              <em style="color:var(--color-text-muted);">Multi-classes</em>
+              <em class="text-muted">Multi-classes</em>
             <?php endif ?>
           </td>
           <td style="white-space:nowrap;">
-          <?php if ($s['plan_id']): ?>
-            <a href="/sessions/<?= $s['id'] ?>/live" class="btn btn-sm btn-primary">Ouvrir</a>
-          <?php else: ?>
-            <span class="btn btn-sm" style="opacity:.4;cursor:default;" title="Séance informative, pas de plan de salle">—</span>
-          <?php endif ?>
-            <button onclick="deleteSession(<?= $s['id'] ?>)" class="btn btn-sm btn-danger">Supprimer</button>
+            <?php if ($s['plan_id']): ?>
+              <a href="/sessions/<?= $s['id'] ?>/live" class="btn btn-sm btn-primary">Ouvrir</a>
+            <?php else: ?>
+              <span class="btn btn-sm session-btn-disabled" title="Séance informative, pas de plan de salle">—</span>
+            <?php endif ?>
+            <button class="btn btn-sm btn-danger js-delete-session" data-id="<?= $s['id'] ?>">Supprimer</button>
           </td>
         </tr>
         <?php endforeach ?>
       </tbody>
     </table>
     <?php if ($totalPages > 1): ?>
-    <div style="display:flex;gap:.5rem;align-items:center;margin-top:.75rem;">
+    <div class="sessions-pagination">
       <?php if ($page > 1): ?>
         <a href="?page=<?= $page - 1 ?>" class="btn btn-sm">&larr; Pr&eacute;c&eacute;dent</a>
       <?php endif ?>
@@ -87,7 +92,7 @@
     $weekLabel = 'Semaine du '.(new \DateTime($weekStart))->format('d/m').' au '.(new \DateTime($weekEnd))->format('d/m/Y');
   ?>
 
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+  <div class="week-nav">
     <a href="?view=week&week=<?= $prevWeek ?>" class="btn btn-sm">&larr; Semaine pr&eacute;c.</a>
     <strong><?= $weekLabel ?></strong>
     <a href="?view=week&week=<?= $nextWeek ?>" class="btn btn-sm">Semaine suiv. &rarr;</a>
@@ -122,8 +127,7 @@
     $currentWeekSlug = $weekDate->format('o-\\WW');
   ?>
 
-  <!-- Légende drag -->
-  <p style="font-size:var(--text-sm);color:var(--color-text-muted);margin-bottom:.5rem;">
+  <p class="week-legend">
     💡 Cliquez (ou glissez) sur un créneau vide pour créer une séance.
   </p>
 
@@ -145,7 +149,6 @@
           <?= $jours[$i] ?>
           <small><?= (new \DateTime($d))->format('d/m') ?></small>
         </div>
-        <!-- data-date pour le JS de drag -->
         <div class="week-col-body" style="height:<?= $hauteurTotal ?>px;"
              data-date="<?= $d ?>"
              data-heure-debut="<?= $heureDebut ?>"
@@ -158,13 +161,13 @@
               $top    = (($h  + $m  / 60) - $heureDebut) * $pxParHeure;
               $height = (($h2 + $m2 / 60) - ($h + $m / 60)) * $pxParHeure - 2;
             ?>
-            <div class="week-card <?= $ws['plan_id'] ? '' : 'week-card--multi' ?>"
-                style="top:<?= round($top) ?>px;height:<?= round($height) ?>px;<?= $ws['plan_id'] ? '' : 'opacity:.6;cursor:default;' ?>"
-                <?php if ($ws['plan_id']): ?>onclick="window.location='/sessions/<?= $ws['id'] ?>/live?from_week=<?= $currentWeekSlug ?>'"<?php endif ?>>
-              <div style="display:flex;justify-content:space-between;align-items:baseline;gap:.25rem;">
+            <div class="week-card <?= $ws['plan_id'] ? '' : 'week-card--multi week-card--no-plan' ?>"
+                style="top:<?= round($top) ?>px;height:<?= round($height) ?>px;"
+                <?php if ($ws['plan_id']): ?>data-session-url="/sessions/<?= $ws['id'] ?>/live?from_week=<?= $currentWeekSlug ?>"<?php endif ?>>
+              <div class="week-card-header">
                 <div class="week-card-class"><?= htmlspecialchars($ws['class_name'] ?? '') ?></div>
                 <?php if ($ws['room_name']): ?>
-                <div class="week-card-room" style="font-size:var(--text-xs);white-space:nowrap;"><?= htmlspecialchars($ws['room_name']) ?></div>
+                <div class="week-card-room"><?= htmlspecialchars($ws['room_name']) ?></div>
                 <?php endif ?>
               </div>
               <?php if (!empty($ws['subject'])): ?>
@@ -173,8 +176,6 @@
             </div>
             <?php endforeach ?>
           <?php endif ?>
-
-          <!-- Élément de sélection drag (injecté via JS) -->
         </div>
       </div>
       <?php endforeach ?>
@@ -184,37 +185,32 @@
 
 <!-- ═══ MODAL NOUVELLE SÉANCE ═══ -->
 <div id="newSessionModal" class="modal-overlay" hidden>
-  <div class="modal-box" style="width:min(580px,95vw);">
+  <div class="modal-box ns-modal-box">
     <div class="modal-header">
       <h2>Nouvelle séance</h2>
-      <button class="modal-close" onclick="closeNewSessionModal()" aria-label="Fermer">&times;</button>
+      <button class="modal-close" id="btnCloseNewSession" aria-label="Fermer">&times;</button>
     </div>
 
-    <!-- Bandeau récapitulatif créneau (affiché uniquement si prérempli depuis le calendrier) -->
-    <div id="nsSlotBanner" hidden
-         style="display:flex;align-items:center;gap:.5rem;background:var(--color-primary-highlight,#e8f4f4);border-radius:var(--radius-md);padding:.5rem .75rem;margin-bottom:var(--space-4);font-size:var(--text-sm);">
-      <span style="font-size:1.1em;">📅</span>
-      <span id="nsSlotLabel" style="font-weight:600;"></span>
-      <button type="button" onclick="nsUnlockSlot()"
-              style="margin-left:auto;font-size:var(--text-xs);color:var(--color-text-muted);background:none;border:none;cursor:pointer;"
-              title="Modifier manuellement">✏️ Modifier</button>
+    <div id="nsSlotBanner" class="ns-slot-banner" hidden>
+      <span class="ns-slot-banner-icon">&#128197;</span>
+      <span id="nsSlotLabel" class="ns-slot-label"></span>
+      <button type="button" id="btnNsUnlockSlot" class="ns-slot-unlock" title="Modifier manuellement">✏️ Modifier</button>
     </div>
 
-    <form id="newSessionForm" onsubmit="createSession(event)" style="display:flex;flex-direction:column;gap:var(--space-5);">
+    <form id="newSessionForm" class="ns-form">
 
-      <!-- Date + Matière (masqués quand créneau prérempli depuis le calendrier) -->
-      <div id="nsManualSlot" style="display:flex;flex-direction:column;gap:var(--space-4);">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4);">
+      <div id="nsManualSlot" class="ns-manual-slot">
+        <div class="ns-grid-2">
           <div class="form-group">
             <label class="form-label" for="nsDate">Date</label>
             <input class="form-input" type="date" id="nsDate" name="date" required value="<?= date('Y-m-d') ?>">
           </div>
           <div class="form-group">
-            <label class="form-label" for="nsSubject">Matière <span style="font-weight:400;color:var(--text-muted)">(optionnel)</span></label>
+            <label class="form-label" for="nsSubject">Matière <span class="ns-label-optional">(optionnel)</span></label>
             <input class="form-input" type="text" id="nsSubject" name="subject" placeholder="ex : Mathématiques">
           </div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4);">
+        <div class="ns-grid-2">
           <div class="form-group">
             <label class="form-label" for="nsTimeStart">Heure de début</label>
             <select class="form-input" id="nsTimeStart" name="time_start"></select>
@@ -226,7 +222,6 @@
         </div>
       </div>
 
-      <!-- 1. Classe -->
       <div class="form-group">
         <label class="form-label" for="nsClass">1. Classe</label>
         <select class="form-input" id="nsClass" required>
@@ -234,7 +229,6 @@
         </select>
       </div>
 
-      <!-- 2. Plan associé (chaîné via salle) -->
       <div class="form-group">
         <label class="form-label" for="nsRoom">Salle</label>
         <select class="form-input" id="nsRoom" disabled required>
@@ -247,35 +241,31 @@
           <option value="">— Choisir d'abord une salle —</option>
         </select>
         <?php if (empty($plans)): ?>
-          <p style="margin-top:var(--space-2);color:var(--danger);font-size:var(--text-sm);">&#9888;&#65039; Aucun plan configuré. Créez d'abord une salle, une classe, et assignez-les.</p>
+          <p class="ns-plan-warning">&#9888;&#65039; Aucun plan configuré. Créez d'abord une salle, une classe, et assignez-les.</p>
         <?php endif ?>
       </div>
 
-      <!-- 3. Récurrence -->
       <div class="form-group">
         <label class="form-label">3. Récurrence</label>
-        <div style="display:flex;flex-direction:column;gap:var(--space-2);">
-          <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;">
+        <div class="ns-recurrence">
+          <label class="ns-recurrence-row">
             <input type="radio" name="recurrence_type" value="none" checked> Une seule séance
           </label>
-          <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;">
+          <label class="ns-recurrence-row">
             <input type="radio" name="recurrence_type" value="count"> Répéter
             <input type="number" id="nsRecCount" min="2" max="52" value="10"
-                   style="width:4rem;" class="form-input"
-                   onclick="document.querySelector('[name=recurrence_type][value=count]').checked=true">
+                   class="form-input ns-rec-count">
             fois (toutes les semaines)
           </label>
-          <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;">
+          <label class="ns-recurrence-row">
             <input type="radio" name="recurrence_type" value="until"> Jusqu'au
-            <input type="date" id="nsRecUntil" class="form-input"
-                   style="width:auto;"
-                   onclick="document.querySelector('[name=recurrence_type][value=until]').checked=true">
+            <input type="date" id="nsRecUntil" class="form-input ns-rec-until">
           </label>
         </div>
       </div>
 
-      <div style="display:flex;gap:var(--space-3);justify-content:flex-end;padding-top:var(--space-2);border-top:1px solid var(--divider);">
-        <button type="button" onclick="closeNewSessionModal()" class="btn">Annuler</button>
+      <div class="ns-form-footer">
+        <button type="button" id="btnCancelNewSession" class="btn">Annuler</button>
         <button type="submit" class="btn btn-primary" id="nsSubmitBtn" disabled>Créer la séance</button>
       </div>
     </form>
@@ -284,10 +274,10 @@
 
 <!-- ═══ MODAL SUPPRESSION SÉANCE ═══ -->
 <div id="deleteModal" class="modal-overlay" hidden>
-  <div class="modal-box" style="max-height:80vh;overflow-y:auto;">
-    <h2 style="margin-bottom:var(--space-4);">&#9888;&#65039; Supprimer cette séance&nbsp;?</h2>
+  <div class="modal-box delete-modal-box">
+    <h2 class="delete-modal-title">&#9888;&#65039; Supprimer cette séance&nbsp;?</h2>
     <div id="deleteModalBody"></div>
-    <div style="display:flex;gap:.5rem;flex-wrap:wrap;justify-content:flex-end;margin-top:var(--space-4);">
+    <div class="delete-modal-footer">
       <button id="btnDeleteCancel"  class="btn">Annuler</button>
       <button id="btnDeleteSave"    class="btn btn-warning">&#128190; Sauvegarder les obs. d'abord</button>
       <button id="btnDeleteConfirm" class="btn btn-danger">&#128465; Supprimer quand même</button>
@@ -295,52 +285,7 @@
   </div>
 </div>
 
-<style>
-/* ── Sélection drag sur le calendrier ── */
-.drag-selection {
-  position: absolute;
-  left: 2px; right: 2px;
-  background: color-mix(in oklch, var(--primary) 25%, transparent);
-  border: 2px solid var(--primary);
-  border-radius: var(--radius-sm);
-  pointer-events: none;
-  z-index: 10;
-  transition: none;
-}
-.week-col-body {
-  position: relative;
-  user-select: none;
-  -webkit-user-select: none;
-}
-/* Curseur crayon sur les zones vides du calendrier */
-.week-col-body:not(.dragging) {
-  cursor: cell;
-}
-/* ── Hover highlight sur les créneaux vides ── */
-.week-hover-bar {
-  position: absolute;
-  left: 2px; right: 2px;
-  background: color-mix(in oklch, var(--primary) 20%, transparent);
-  border: 1px dashed color-mix(in oklch, var(--primary) 50%, transparent);
-  border-radius: var(--radius-sm);
-  pointer-events: none;
-  z-index: 5;
-  transition: top 80ms ease;
-}
-/* ── Case cliquée / sélectionnée ── */
-.week-selected-bar {
-  position: absolute;
-  left: 2px; right: 2px;
-  background: color-mix(in oklch, var(--primary) 18%, transparent);
-  border: 1.5px solid color-mix(in oklch, var(--primary) 55%, transparent);
-  border-radius: var(--radius-sm);
-  pointer-events: none;
-  z-index: 6;
-}
-</style>
-
 <script>
-// ── Données plans injectées depuis PHP ──────────────────────
 const PLANS = <?= json_encode(array_values($plans), JSON_HEX_TAG) ?>;
 
 const TIME_SLOTS = [
@@ -351,29 +296,13 @@ const TIME_SLOTS = [
   '19:00'
 ];
 
-
-// ─────────────────────────────────────────────────────────────
-// UI éphémère de la vue semaine (barres de sélection / drag)
-// Permet de repartir d'un état visuel propre après ouverture/
-// fermeture de modale ou interruption d'une interaction.
-// ─────────────────────────────────────────────────────────────
 function clearWeekTransientUi() {
-  // Supprime les barres de sélection visuelle (clic simple + drag)
   document.querySelectorAll('.week-selected-bar, .drag-selection').forEach(el => el.remove());
-
-  // Nettoie l'état CSS "dragging" sur les colonnes de la vue semaine
-  document.querySelectorAll('.week-col-body.dragging').forEach(col => {
-    col.classList.remove('dragging');
-  });
-
-  // Réinitialise l'état global de drag pour éviter des incohérences
+  document.querySelectorAll('.week-col-body.dragging').forEach(col => col.classList.remove('dragging'));
   dragState = null;
 }
 
-// ══════════════════════════════════════════════════════════
-//  TOGGLE VUE LISTE / SEMAINE
-// ══════════════════════════════════════════════════════════
-
+// ══ TOGGLE VUE ══
 let dragInitialized = false;
 
 function setView(view) {
@@ -381,16 +310,12 @@ function setView(view) {
   const viewWeek = document.getElementById('viewWeek');
   const btnList  = document.getElementById('btnList');
   const btnWeek  = document.getElementById('btnWeek');
-
   if (view === 'week') {
     viewList.setAttribute('hidden', '');
     viewWeek.removeAttribute('hidden');
     btnList.classList.remove('active');
     btnWeek.classList.add('active');
-    if (!dragInitialized) {
-      initDragCreate();
-      dragInitialized = true;
-    }
+    if (!dragInitialized) { initDragCreate(); dragInitialized = true; }
   } else {
     viewWeek.setAttribute('hidden', '');
     viewList.removeAttribute('hidden');
@@ -399,151 +324,105 @@ function setView(view) {
   }
 }
 
-// ══════════════════════════════════════════════════════════
-//  DRAG-TO-CREATE SUR LE CALENDRIER
-// ══════════════════════════════════════════════════════════
+document.getElementById('btnList').addEventListener('click', () => setView('list'));
+document.getElementById('btnWeek').addEventListener('click', () => setView('week'));
 
+// ══ DRAG-TO-CREATE ══
 let dragState = null;
 
 function yToMinutes(y, heureDebut, pxParHeure) {
-  const raw = (y / pxParHeure) * 60 + heureDebut * 60;
-  return Math.round(raw / 30) * 30;
+  return Math.round(((y / pxParHeure) * 60 + heureDebut * 60 - 15) / 30) * 30;
 }
-
 function minutesToTime(min) {
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+  return String(Math.floor(min/60)).padStart(2,'0') + ':' + String(min%60).padStart(2,'0');
 }
-
 function getRelativeY(e, col) {
   const rect = col.getBoundingClientRect();
   const clientY = e.touches ? e.touches[0].clientY : e.clientY;
   return Math.max(0, Math.min(clientY - rect.top, col.clientHeight));
 }
-
 function updateDragEl(el, startMin, endMin, heureDebut, pxParHeure) {
-  const top    = ((startMin / 60) - heureDebut) * pxParHeure;
-  const height = ((endMin - startMin) / 60) * pxParHeure;
-  el.style.top    = Math.round(top) + 'px';
-  el.style.height = Math.max(height, 16) + 'px';
+  el.style.top    = Math.round(((startMin/60) - heureDebut) * pxParHeure) + 'px';
+  el.style.height = Math.max(((endMin - startMin)/60) * pxParHeure, 16) + 'px';
   el.textContent  = minutesToTime(startMin) + ' – ' + minutesToTime(endMin);
 }
 
 function initDragCreate() {
   document.querySelectorAll('.week-col-body').forEach(col => {
-    const heureDebut  = parseInt(col.dataset.heureDebut);
-    const pxParHeure  = parseInt(col.dataset.pxParHeure);
-    const date        = col.dataset.date;
-
+    const heureDebut = parseInt(col.dataset.heureDebut);
+    const pxParHeure = parseInt(col.dataset.pxParHeure);
+    const date       = col.dataset.date;
     let hoverEl = null;
 
-    // Hover visuel sur les créneaux vides (demi-heure)
     col.addEventListener('mouseenter', () => {
-      if (dragState) return; // pas de hover pendant un drag actif
+      if (dragState) return;
       hoverEl = document.createElement('div');
       hoverEl.className = 'week-hover-bar';
       hoverEl.style.height = (pxParHeure / 2) + 'px';
       col.appendChild(hoverEl);
     });
-
     col.addEventListener('mousemove', e => {
       if (!hoverEl || dragState) return;
-      if (e.target.closest('.week-card')) {
-        // Ne pas surligner derrière une séance existante
-        hoverEl.style.display = 'none';
-        return;
-      }
+      if (e.target.closest('.week-card')) { hoverEl.style.display = 'none'; return; }
       hoverEl.style.display = '';
-      const y = getRelativeY(e, col);
-      // Snap sur les demi-heures en minutes absolues (à partir de heureDebut)
-      const snapMin = Math.round((y / pxParHeure * 60 - 15) / 30) * 30 + heureDebut * 60;
-      const top = ((snapMin / 60) - heureDebut) * pxParHeure;
-      hoverEl.style.top = Math.round(top) + 'px';
+      const snapMin = Math.round((getRelativeY(e,col) / pxParHeure * 60 - 15) / 30) * 30 + heureDebut * 60;
+      hoverEl.style.top = Math.round(((snapMin/60) - heureDebut) * pxParHeure) + 'px';
     });
-
-    col.addEventListener('mouseleave', () => {
-      if (hoverEl) { hoverEl.remove(); hoverEl = null; }
-    });
-
-    // Clic simple = petite barre de sélection fixe (sans ouverture de modale)
+    col.addEventListener('mouseleave', () => { if (hoverEl) { hoverEl.remove(); hoverEl = null; } });
     col.addEventListener('click', e => {
       if (e.target.closest('.week-card') || dragState) return;
       document.querySelectorAll('.week-selected-bar').forEach(el => el.remove());
-      const y = getRelativeY(e, col);
-      const snapMin = Math.round((y / pxParHeure * 60 - 15) / 30) * 30 + heureDebut * 60;
-      const top = ((snapMin / 60) - heureDebut) * pxParHeure;
+      const snapMin = Math.round((getRelativeY(e,col) / pxParHeure * 60 - 15) / 30) * 30 + heureDebut * 60;
       const sel = document.createElement('div');
       sel.className = 'week-selected-bar';
-      sel.style.top    = Math.round(top) + 'px';
+      sel.style.top    = Math.round(((snapMin/60) - heureDebut) * pxParHeure) + 'px';
       sel.style.height = (pxParHeure / 2) + 'px';
       col.appendChild(sel);
     });
-
-    // Drag souris = création d'un créneau de durée variable
     col.addEventListener('mousedown', e => {
       if (e.target.closest('.week-card')) return;
       e.preventDefault();
       document.querySelectorAll('.week-selected-bar').forEach(el => el.remove());
-      if (hoverEl) { hoverEl.style.display = 'none'; }
-      const y        = getRelativeY(e, col);
-      const startMin = yToMinutes(y, heureDebut, pxParHeure);
-      const endMin   = startMin + 60; // durée par défaut = 1h
+      if (hoverEl) hoverEl.style.display = 'none';
+      const startMin = yToMinutes(getRelativeY(e,col), heureDebut, pxParHeure);
       const el = document.createElement('div');
       el.className = 'drag-selection';
       col.appendChild(el);
-      updateDragEl(el, startMin, endMin, heureDebut, pxParHeure);
-      dragState = { col, date, heureDebut, pxParHeure, startMin, endMin, el, fromTouch: false };
+      updateDragEl(el, startMin, startMin + 60, heureDebut, pxParHeure);
+      dragState = { col, date, heureDebut, pxParHeure, startMin, endMin: startMin+60, el, fromTouch: false };
       col.classList.add('dragging');
     });
-
-    // Drag tactile = même logique que souris, flag fromTouch pour les events globaux
     col.addEventListener('touchstart', e => {
       if (e.target.closest('.week-card')) return;
       document.querySelectorAll('.week-selected-bar').forEach(el => el.remove());
-      const y        = getRelativeY(e, col);
-      const startMin = yToMinutes(y, heureDebut, pxParHeure);
-      const endMin   = startMin + 60;
+      const startMin = yToMinutes(getRelativeY(e,col), heureDebut, pxParHeure);
       const el = document.createElement('div');
       el.className = 'drag-selection';
       col.appendChild(el);
-      updateDragEl(el, startMin, endMin, heureDebut, pxParHeure);
-      dragState = { col, date, heureDebut, pxParHeure, startMin, endMin, el, fromTouch: true };
+      updateDragEl(el, startMin, startMin + 60, heureDebut, pxParHeure);
+      dragState = { col, date, heureDebut, pxParHeure, startMin, endMin: startMin+60, el, fromTouch: true };
       col.classList.add('dragging');
     }, { passive: true });
   });
 
-  // Drag en cours : adapte la hauteur du bloc de sélection (souris)
+  // Délégation click sur week-card (remplacement de onclick="window.location=...")
+  document.getElementById('viewWeek').addEventListener('click', e => {
+    const card = e.target.closest('.week-card[data-session-url]');
+    if (card) window.location = card.dataset.sessionUrl;
+  });
+
   document.addEventListener('mousemove', e => {
     if (!dragState || dragState.fromTouch) return;
-    const y      = getRelativeY(e, dragState.col);
-    const curMin = yToMinutes(y, dragState.heureDebut, dragState.pxParHeure);
-    dragState.endMin = Math.max(curMin, dragState.startMin + 30); // min 30 minutes
-    updateDragEl(dragState.el, dragState.startMin, dragState.endMin,
-                 dragState.heureDebut, dragState.pxParHeure);
+    dragState.endMin = Math.max(yToMinutes(getRelativeY(e,dragState.col), dragState.heureDebut, dragState.pxParHeure), dragState.startMin + 30);
+    updateDragEl(dragState.el, dragState.startMin, dragState.endMin, dragState.heureDebut, dragState.pxParHeure);
   });
-
-  // Fin de drag souris → création de séance + ouverture modale
-  document.addEventListener('mouseup', e => {
-    if (!dragState || dragState.fromTouch) return;
-    finalizeDrag();
-  });
-
-  // Drag tactile
+  document.addEventListener('mouseup', () => { if (!dragState || dragState.fromTouch) return; finalizeDrag(); });
   document.addEventListener('touchmove', e => {
     if (!dragState || !dragState.fromTouch) return;
-    const y      = getRelativeY(e, dragState.col);
-    const curMin = yToMinutes(y, dragState.heureDebut, dragState.pxParHeure);
-    dragState.endMin = Math.max(curMin, dragState.startMin + 30);
-    updateDragEl(dragState.el, dragState.startMin, dragState.endMin,
-                 dragState.heureDebut, dragState.pxParHeure);
+    dragState.endMin = Math.max(yToMinutes(getRelativeY(e,dragState.col), dragState.heureDebut, dragState.pxParHeure), dragState.startMin + 30);
+    updateDragEl(dragState.el, dragState.startMin, dragState.endMin, dragState.heureDebut, dragState.pxParHeure);
   }, { passive: true });
-
-  // Fin de drag tactile → création de séance + ouverture modale
-  document.addEventListener('touchend', e => {
-    if (!dragState || !dragState.fromTouch) return;
-    finalizeDrag();
-  });
+  document.addEventListener('touchend', () => { if (!dragState || !dragState.fromTouch) return; finalizeDrag(); });
 }
 
 function finalizeDrag() {
@@ -555,37 +434,31 @@ function finalizeDrag() {
   openNewSessionModal(date, minutesToTime(startMin), minutesToTime(endMin));
 }
 
-// ══════════════════════════════════════════════════════════
-//  MODALE NOUVELLE SÉANCE
-// ══════════════════════════════════════════════════════════
-
+// ══ MODALE NOUVELLE SÉANCE ══
 let _slotLocked = false;
 
 function openNewSessionModal(date = null, timeStart = null, timeEnd = null) {
-    // Toujours repartir d'une vue semaine propre avant d'ouvrir la modale
   clearWeekTransientUi();
-  
   buildClassSelect();
   buildTimeSelects();
-
-  document.getElementById('nsClass').value  = '';
-  document.getElementById('nsRoom').value   = '';
+  document.getElementById('nsClass').value = '';
+  document.getElementById('nsRoom').value  = '';
   document.getElementById('nsRoom').disabled = true;
-  document.getElementById('nsPlan').value   = '';
+  document.getElementById('nsPlan').value  = '';
   document.getElementById('nsPlan').disabled = true;
   document.getElementById('nsSubmitBtn').disabled = true;
 
   if (date && timeStart && timeEnd) {
     _slotLocked = true;
-    document.getElementById('nsDate').value       = date;
-    document.getElementById('nsTimeStart').value  = timeStart;
+    document.getElementById('nsDate').value      = date;
+    document.getElementById('nsTimeStart').value = timeStart;
     filterEndTimes();
-    document.getElementById('nsTimeEnd').value    = timeEnd;
-    const d    = new Date(date + 'T00:00:00');
-    const jours = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+    document.getElementById('nsTimeEnd').value   = timeEnd;
+    const d = new Date(date + 'T00:00:00');
+    const jours = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
     const dateStr = jours[d.getDay()] + ' ' +
-                    String(d.getDate()).padStart(2, '0') + '/' +
-                    String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
+      String(d.getDate()).padStart(2,'0') + '/' +
+      String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear();
     document.getElementById('nsSlotLabel').textContent = dateStr + '  ·  ' + timeStart + ' → ' + timeEnd;
     document.getElementById('nsSlotBanner').removeAttribute('hidden');
     document.getElementById('nsManualSlot').style.display = 'none';
@@ -594,11 +467,9 @@ function openNewSessionModal(date = null, timeStart = null, timeEnd = null) {
     document.getElementById('nsSlotBanner').setAttribute('hidden', '');
     document.getElementById('nsManualSlot').style.display = '';
   }
-
   const until = new Date();
   until.setMonth(until.getMonth() + 3);
-  document.getElementById('nsRecUntil').value = until.toISOString().slice(0, 10);
-
+  document.getElementById('nsRecUntil').value = until.toISOString().slice(0,10);
   document.getElementById('newSessionModal').removeAttribute('hidden');
 }
 
@@ -609,19 +480,11 @@ function nsUnlockSlot() {
 }
 
 function closeNewSessionModal() {
-  const modal = document.getElementById('newSessionModal');
-  const form  = document.getElementById('newSessionForm');
-
-  // Cache la modale
-  modal.setAttribute('hidden', '');
-
-  // Reset complet du formulaire et des éléments de slot
-  form.reset();
+  document.getElementById('newSessionModal').setAttribute('hidden', '');
+  document.getElementById('newSessionForm').reset();
   document.getElementById('nsSlotBanner').setAttribute('hidden', '');
   document.getElementById('nsManualSlot').style.display = '';
   _slotLocked = false;
-
-  // Nettoie également toute l'UI temporaire du calendrier semaine
   clearWeekTransientUi();
 }
 
@@ -656,9 +519,7 @@ function buildClassSelect() {
   const sel = document.getElementById('nsClass');
   sel.innerHTML = '<option value="">— Choisir une classe —</option>';
   classes.sort((a,b) => a[1].localeCompare(b[1]))
-         .forEach(([id, name]) => {
-    sel.innerHTML += `<option value="${id}">${name}</option>`;
-  });
+         .forEach(([id, name]) => { sel.innerHTML += `<option value="${id}">${name}</option>`; });
 }
 
 document.getElementById('nsClass').addEventListener('change', function() {
@@ -674,14 +535,11 @@ document.getElementById('nsClass').addEventListener('change', function() {
     return;
   }
   const rooms = [...new Map(
-    PLANS.filter(p => p.class_id == classId)
-         .map(p => [p.room_id, p.room_name])
+    PLANS.filter(p => p.class_id == classId).map(p => [p.room_id, p.room_name])
   ).entries()];
   roomSel.innerHTML = '<option value="">— Choisir une salle —</option>';
   rooms.sort((a,b) => a[1].localeCompare(b[1]))
-       .forEach(([id, name]) => {
-    roomSel.innerHTML += `<option value="${id}">${name}</option>`;
-  });
+       .forEach(([id, name]) => { roomSel.innerHTML += `<option value="${id}">${name}</option>`; });
   roomSel.disabled = false;
 });
 
@@ -698,13 +556,8 @@ document.getElementById('nsRoom').addEventListener('change', function() {
   const plans = PLANS.filter(p => p.class_id == classId && p.room_id == roomId);
   planSel.innerHTML = '<option value="">— Choisir une disposition —</option>';
   plans.sort((a,b) => a.name.localeCompare(b.name))
-       .forEach(p => {
-    planSel.innerHTML += `<option value="${p.id}">${p.name}</option>`;
-  });
-  if (plans.length === 1) {
-    planSel.value = plans[0].id;
-    document.getElementById('nsSubmitBtn').disabled = false;
-  }
+       .forEach(p => { planSel.innerHTML += `<option value="${p.id}">${p.name}</option>`; });
+  if (plans.length === 1) { planSel.value = plans[0].id; document.getElementById('nsSubmitBtn').disabled = false; }
   planSel.disabled = false;
 });
 
@@ -712,24 +565,18 @@ document.getElementById('nsPlan').addEventListener('change', function() {
   document.getElementById('nsSubmitBtn').disabled = !this.value;
 });
 
-// ══════════════════════════════════════════════════════════
-//  CRÉATION SÉANCE (avec récurrence)
-// ══════════════════════════════════════════════════════════
-
-function createSession(e) {
+// ══ CRÉATION SÉANCE ══
+document.getElementById('newSessionForm').addEventListener('submit', function(e) {
   e.preventDefault();
   const fd = new FormData(e.target);
-
   const recType = fd.get('recurrence_type') || 'none';
   let recurrence = null;
   if (recType === 'count') {
-    const count = parseInt(document.getElementById('nsRecCount').value) || 1;
-    recurrence = { type: 'count', count };
+    recurrence = { type: 'count', count: parseInt(document.getElementById('nsRecCount').value) || 1 };
   } else if (recType === 'until') {
     const until = document.getElementById('nsRecUntil').value;
     if (until) recurrence = { type: 'until', until };
   }
-
   const payload = {
     plan_id:    parseInt(fd.get('plan_id'), 10),
     date:       fd.get('date'),
@@ -738,39 +585,27 @@ function createSession(e) {
     subject:    fd.get('subject')    || null,
     recurrence,
   };
-
   const btn = document.getElementById('nsSubmitBtn');
   btn.disabled = true;
   btn.textContent = 'Création…';
-
   fetch('/api/sessions', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify(payload),
   }).then(r => r.json()).then(d => {
     if (d.ok) {
-      if (d.ids && d.ids.length > 1) {
-        closeNewSessionModal();
-        location.reload();
-      } else {
-        window.location = '/sessions/' + (d.id ?? d.ids[0]) + '/live';
-      }
+      if (d.ids && d.ids.length > 1) { closeNewSessionModal(); location.reload(); }
+      else { window.location = '/sessions/' + (d.id ?? d.ids[0]) + '/live'; }
     } else {
       alert('Erreur : ' + (d.error ?? JSON.stringify(d)));
-      btn.disabled = false;
-      btn.textContent = 'Créer la séance';
+      btn.disabled = false; btn.textContent = 'Créer la séance';
     }
-  }).catch(() => {
-    alert('Erreur réseau.');
-    btn.disabled = false;
-    btn.textContent = 'Créer la séance';
-  });
-}
+  }).catch(() => { alert('Erreur réseau.'); btn.disabled = false; btn.textContent = 'Créer la séance'; });
+});
 
-// ── Suppression séance ──────────────────────────────────────
+// ══ SUPPRESSION SÉANCE ══
 async function deleteSession(id) {
-  const summary = await fetch('/api/sessions/' + id + '/observations-summary')
-                        .then(r => r.json());
+  const summary = await fetch('/api/sessions/' + id + '/observations-summary').then(r => r.json());
   if (summary.count === 0) {
     if (!confirm('Supprimer cette séance ? (aucune observation enregistrée)')) return;
     await doDeleteSession(id);
@@ -782,12 +617,11 @@ async function deleteSession(id) {
     if (!byStudent[key]) byStudent[key] = [];
     byStudent[key].push((r.icon ?? '') + ' ' + r.tag);
   });
-  let html = `<p style="margin-bottom:.75rem"><strong>${summary.count} observation(s)</strong> seront définitivement supprimées&nbsp;:</p>
-    <ul style="margin:.5rem 0 1rem 1.25rem;line-height:2">`;
+  let html = `<p style="margin-bottom:.75rem"><strong>${summary.count} observation(s)</strong> seront définitivement supprimées&nbsp;:</p><ul style="margin:.5rem 0 1rem 1.25rem;line-height:2">`;
   for (const [student, tags] of Object.entries(byStudent)) {
     html += `<li><strong>${student}</strong>&nbsp;: ${tags.join(', ')}</li>`;
   }
-  html += `</ul>`;
+  html += '</ul>';
   document.getElementById('deleteModalBody').innerHTML = html;
   const modal = document.getElementById('deleteModal');
   modal.dataset.sessionId = id;
@@ -800,8 +634,34 @@ async function doDeleteSession(id) {
   else alert('Erreur : ' + (d.error ?? JSON.stringify(d)));
 }
 
-// ── Boutons modale suppression ──────────────────────────────
+// ══ EVENT LISTENERS (DOMContentLoaded) ══
 document.addEventListener('DOMContentLoaded', () => {
+
+  // Bouton ouvrir modale
+  document.getElementById('btnOpenNewSession').addEventListener('click', () => openNewSessionModal());
+
+  // Fermeture modale (croix + bouton Annuler)
+  document.getElementById('btnCloseNewSession').addEventListener('click', closeNewSessionModal);
+  document.getElementById('btnCancelNewSession').addEventListener('click', closeNewSessionModal);
+
+  // Déverrouiller le slot
+  document.getElementById('btnNsUnlockSlot').addEventListener('click', nsUnlockSlot);
+
+  // Délégation : boutons Supprimer dans le tableau
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('.js-delete-session');
+    if (btn) deleteSession(parseInt(btn.dataset.id));
+  });
+
+  // nsRecCount et nsRecUntil cochent automatiquement le bon radio
+  document.getElementById('nsRecCount').addEventListener('click', () => {
+    document.querySelector('[name=recurrence_type][value=count]').checked = true;
+  });
+  document.getElementById('nsRecUntil').addEventListener('click', () => {
+    document.querySelector('[name=recurrence_type][value=until]').checked = true;
+  });
+
+  // Modale suppression
   document.getElementById('btnDeleteConfirm').addEventListener('click', async () => {
     const id = document.getElementById('deleteModal').dataset.sessionId;
     document.getElementById('deleteModal').setAttribute('hidden', '');
@@ -815,11 +675,12 @@ document.addEventListener('DOMContentLoaded', () => {
     window.open('/api/sessions/' + id + '/observations-export', '_blank');
   });
 
+  // Vue initiale
   const params = new URLSearchParams(location.search);
   if (params.get('view') === 'week') setView('week');
 });
 
-// ── Import ICS ──────────────────────────────────────────────
+// ══ IMPORT ICS ══
 document.getElementById('icsForm').addEventListener('submit', async function(e) {
   e.preventDefault();
   const btn = this.querySelector('button[type=submit]');
