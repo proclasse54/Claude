@@ -12,60 +12,7 @@ $pageTitle = 'Connexion — ProClasse';
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/app.css">
-  <style>
-    body {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100dvh;
-      background: var(--bg);
-    }
-    .login-card {
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-xl);
-      box-shadow: var(--shadow-md);
-      padding: var(--space-10) var(--space-8);
-      width: 100%;
-      max-width: 400px;
-    }
-    .login-logo {
-      display: flex;
-      align-items: center;
-      gap: var(--space-3);
-      margin-bottom: var(--space-8);
-      justify-content: center;
-    }
-    .login-logo svg { color: var(--primary); }
-    .login-logo span {
-      font-size: var(--text-lg);
-      font-weight: 700;
-      color: var(--text);
-    }
-    .login-title {
-      font-size: var(--text-base);
-      font-weight: 600;
-      color: var(--text);
-      margin-bottom: var(--space-6);
-      text-align: center;
-    }
-    .alert {
-      padding: var(--space-3) var(--space-4);
-      border-radius: var(--radius-md);
-      font-size: var(--text-sm);
-      margin-bottom: var(--space-5);
-    }
-    .alert-error {
-      background: var(--danger-light);
-      color: var(--danger);
-    }
-    .login-footer {
-      text-align: center;
-      margin-top: var(--space-6);
-      font-size: var(--text-xs);
-      color: var(--text-muted);
-    }
-  </style>
+  <link rel="stylesheet" href="/css/login.css">
 </head>
 <body>
   <div class="login-card">
@@ -110,7 +57,7 @@ $pageTitle = 'Connexion — ProClasse';
         >
       </div>
 
-      <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; margin-top:var(--space-2)">
+      <button type="submit" class="btn btn-primary btn-block">
         Se connecter
       </button>
     </form>
