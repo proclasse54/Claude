@@ -4,20 +4,25 @@ RewriteEngine On
 # Bloquer /install
 RewriteRule ^install$ - [F,L]
 
-# Bloquer les fichiers de debug — accès localhost uniquement
-<Files "debug_session.php">
-    Require local
-</Files>
-<Files "diagnostic_sessions.php">
-    Require local
-</Files>
-<Files "fix_duplicates.php">
-    Require local
-</Files>
-
 # Servir les fichiers et dossiers existants directement
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 
 # Tout le reste → index.php
 RewriteRule ^ index.php [QSA,L]
+
+<IfModule mod_headers.c>
+    Header always set Content-Security-Policy "\
+        default-src 'self'; \
+        script-src 'self' \
+        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; \
+        font-src 'self' https://fonts.gstatic.com; \
+        img-src 'self' data:; \
+        connect-src 'self'; \
+        frame-ancestors 'none'; \
+        base-uri 'self'; \
+        form-action 'self';"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
