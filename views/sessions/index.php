@@ -285,5 +285,5 @@ $extraCss = '/css/sessions.css';
   </div>
 </div>
 
-<script>window.PLANS = <?= json_encode(array_values($plans), JSON_HEX_TAG) ?>;</script>
+<script nonce="<?= htmlspecialchars($cspNonce ?? '') ?>">window.PLANS = <?= json_encode(array_values($plans), JSON_HEX_TAG) ?>;</script>
 <script src="/js/sessions.js" defer></script>

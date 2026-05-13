@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?= htmlspecialchars($pageTitle ?? 'ProClasse') ?></title>
 <link rel="stylesheet" href="/css/app.css">
-<script type="module" src="/js/emoji-picker.js"></script>
+<script type="module" src="/js/emoji-picker.js" nonce="<?= htmlspecialchars($cspNonce ?? '') ?>"></script>
 </head>
 <body>
 <nav class="sidebar">
@@ -71,6 +71,6 @@
 <main class="main-content">
   <?= $content ?? '' ?>
 </main>
-<script src="/js/app.js"></script>
+<script src="/js/app.js" nonce="<?= htmlspecialchars($cspNonce ?? '') ?>"></script>
 </body>
 </html>

@@ -43,10 +43,22 @@ if ($appCfg['debug'] ?? false) {
 // ── Session ─────────────────────────────────────────────
 Auth::start();
 
+// ── CSP Nonce ────────────────────────────────────────────
+$cspNonce = base64_encode(random_bytes(16));
+header(
+    "Content-Security-Policy-Report-Only: " .
+    "default-src 'self'; " .
+    "script-src 'self' 'nonce-{$cspNonce}'; " .
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " .
+    "font-src 'self' https://fonts.gstatic.com; " .
+    "img-src 'self' data:; " .
+    "connect-src 'self'; " .
+    "frame-ancestors 'none'; " .
+    "base-uri 'self'; " .
+    "form-action 'self';"
+);
+
 // ── Routes PUBLIQUES (sans Auth::check) ──────────────────────
-// /login, /logout et /install sont gérées par AuthController.
-// /photo est publique : les photos élèves peuvent être affichées sans login
-// (la sécurité repose sur l'URL non-devinable Classe.Nom.Prenom.jpg)
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $method = $_SERVER['REQUEST_METHOD'];
 
@@ -60,7 +72,6 @@ foreach ($publicRoutes as $pub) {
 }
 
 // ── Protection globale ──────────────────────────────────
-// Toutes les routes non-publiques nécessitent d'être connecté.
 if (!$isPublic) {
     Auth::check();
 }
@@ -130,14 +141,12 @@ $router->add('DELETE', '/api/tags/{id}',                                     fn(
 $router->add('GET',    '/api/students/{id}',                                 fn($p)=> (new StudentController)->apiGet($p));
 $router->add('GET',    '/api/students/{id}/summary',                         fn($p)=> (new StudentController)->apiSummary($p));
 $router->add('DELETE', '/api/sessions/{id}/remove-student/{student_id}',     fn($p)=> (new SessionController)->apiRemoveStudent($p));
-// Onglets fiche élève
 $router->add('POST',   '/api/students/{id}/photo',                           fn($p)=> (new StudentController)->apiUploadPhoto($p));
 $router->add('DELETE', '/api/students/{id}/photo',                           fn($p)=> (new StudentController)->apiDeletePhoto($p));
-// Recadrage photo élève : lecture + écriture des paramètres crop en BDD (sans toucher au fichier)
 $router->add('GET',    '/api/students/{id}/photo-crop',                      fn($p)=> (new StudentController)->apiGetCrop($p));
 $router->add('POST',   '/api/students/{id}/photo-crop',                      fn($p)=> (new StudentController)->apiSaveCrop($p));
 
-// Bilan élève (vue conseil de classe)
+// Bilan élève
 $router->add('GET',    '/students/{id}/bilan',                               fn($p)=> (new StudentController)->bilan($p));
 $router->add('GET',    '/api/students/{id}/bilan',                           fn($p)=> (new StudentController)->apiBilan($p));
 
@@ -145,15 +154,14 @@ $router->add('GET',    '/api/students/{id}/bilan',                           fn(
 $router->add('GET',     '/import',                                           fn($p) => (new ImportController)->index($p));
 $router->add('POST',    '/import/photos',                                    fn($p) => (new ImportController)->photos($p));
 
-// Photos élèves                       
+// Photos élèves
 $router->add('GET',     '/photo',                                            fn() => (new PhotoController)->serve());
 
-// Racine                      
+// Racine
 $router->add('GET',     '/',                                                 fn()  => Response::redirect('/sessions'));
 
-// Tags                    
+// Tags
 $router->add('GET',    '/tags',                                              fn()  => (new SessionController)->tagsIndex());
-
 
 // ── Dispatch ──────────────────────────────────────────────
 $router->dispatch($method, $uri);
