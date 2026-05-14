@@ -176,7 +176,7 @@
   </div>
 </div>
 
-<script>
+<script nonce="<?= htmlspecialchars($cspNonce ?? '') ?>">
 const CLASS_ID = <?= $class['id'] ?>;
 
 function showTab(name, btn) {

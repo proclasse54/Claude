@@ -538,8 +538,9 @@ a.live-nav-btn:focus-visible::after {
   </div>
 </div>
 
-<script>
+<script nonce="<?= htmlspecialchars($cspNonce ?? '') ?>">
 const SESSION_ID     = <?= (int)$session['id'] ?>;
+
 const IS_PAST_SESSION = <?= $isPast ? 'true' : 'false' ?>; // séance passée → lecture seule
 let currentStudentId = null;
 let currentStudentName = '';
@@ -1201,7 +1202,7 @@ deleteSessionConfirm.addEventListener('click', () => {
   </div>
 </div>
 
-<script>
+<script nonce="<?= htmlspecialchars($cspNonce ?? '') ?>">
 // NOTE : SESSION_ID et seatStudentMap sont déjà définis dans le bloc <script> précédent.
 window.seatStudentMap  = seatStudentMap;
 

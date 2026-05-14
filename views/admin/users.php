@@ -138,7 +138,7 @@
   </div>
 </div>
 
-<script>
+<script nonce="<?= htmlspecialchars($cspNonce ?? '') ?>">
 function openEdit(u) {
   const f = document.getElementById('formEdit');
   f.action = '/admin/users/' + u.id;

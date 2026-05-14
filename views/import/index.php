@@ -219,7 +219,7 @@ ob_start();
 }
 </style>
 
-<script>
+<script nonce="<?= htmlspecialchars($cspNonce ?? '') ?>">
 // ── Onglets ───────────────────────────────────────────────
 document.querySelectorAll('.import-tab').forEach(tab => {
   tab.addEventListener('click', () => {

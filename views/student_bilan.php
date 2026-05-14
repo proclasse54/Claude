@@ -335,7 +335,7 @@
 
 </main>
 
-<script>
+<script nonce="<?= htmlspecialchars($cspNonce ?? '') ?>">
 (function () {
     const STUDENT_ID = <?= $studentId ?>;
 

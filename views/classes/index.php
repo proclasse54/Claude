@@ -120,7 +120,7 @@
   </div>
 </div>
 
-<script>
+<script nonce="<?= htmlspecialchars($cspNonce ?? '') ?>">
 // ── Import Pronote ─────────────────────────────────────────
 function openImportModal() {
   document.getElementById('pronoteData').value = '';

@@ -46,7 +46,7 @@ foreach (($room['seats'] ?? []) as $s) {
   </div>
 </div>
 
-<script>
+<script nonce="<?= htmlspecialchars($cspNonce ?? '') ?>">
 const ROOM_ID  = <?= json_encode($room['id'] ?? null) ?>;
 let activeMap  = <?= json_encode($activeSeats) ?>;
 

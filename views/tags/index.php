@@ -92,7 +92,7 @@
   </div>
 </div>
 
-<script>
+<script nonce="<?= htmlspecialchars($cspNonce ?? '') ?>">
 function openCreateModal() {
   document.getElementById('tagModalTitle').textContent = 'Nouveau tag';
   document.getElementById('tagId').value    = '';

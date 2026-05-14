@@ -78,7 +78,7 @@ ob_start();
   </div>
 </div>
 
-<script>
+<script nonce="<?= htmlspecialchars($cspNonce ?? '') ?>">
 const PLAN_ID   = <?= $plan['id'] ?>;
 const ROOM_COLS = <?= $room['cols'] ?>;
 

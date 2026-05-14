@@ -37,7 +37,7 @@ ob_start();
 </div>
 <?php endif; ?>
 
-<script>
+<script nonce="<?= htmlspecialchars($cspNonce ?? '') ?>">
 function deleteRoom(id, name) {
   if (!confirm('Supprimer la salle "' + name + '" ?')) return;
   fetch('/api/rooms/' + id, {method:'DELETE'})
