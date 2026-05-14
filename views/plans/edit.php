@@ -16,6 +16,10 @@ for ($r = 0; $r < $room['rows']; $r++) {
 $assignMap = [];
 foreach ($assignments as $a) { $assignMap[$a['seat_id']] = $a; }
 
+// Map seat_id => student_id pour le JS
+$assignmentsJs = [];
+foreach ($assignments as $a) { $assignmentsJs[$a['seat_id']] = $a['student_id']; }
+
 ob_start();
 ?>
 <div class="page-header">
@@ -77,6 +81,14 @@ ob_start();
     <button class="btn btn-ghost btn-sm" style="margin-top: auto" onclick="clearAll()">Tout effacer</button>
   </div>
 </div>
+
+<!-- Données PHP → JS (pas de nonce nécessaire, type=application/json n'est pas exécuté) -->
+<div id="planEditData"
+     data-plan-id="<?= (int)$plan['id'] ?>"
+     data-room-cols="<?= (int)$room['cols'] ?>"
+     hidden></div>
+<script id="planAssignments" type="application/json"><?= json_encode($assignmentsJs) ?></script>
+<script src="/js/plans-edit.js" defer></script>
 
 <?php
 $content = ob_get_clean();
