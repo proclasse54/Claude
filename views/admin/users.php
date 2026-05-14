@@ -138,4 +138,4 @@
   </div>
 </div>
 
-<!-- Le JS de cette vue est externalisé dans /js/admin-users.js (chargé par le layout) -->
+<script src="/js/admin-users.js" defer></script>

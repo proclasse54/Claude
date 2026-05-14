@@ -1,4 +1,7 @@
-
+<?php
+// views/classes/index.php
+// $classes injecté par ClassController::index()
+?>
 <div class="page-header">
   <div>
     <h1>Classes</h1>
@@ -120,4 +123,4 @@
   </div>
 </div>
 
-<!-- Le JS de cette vue est externalisé dans /js/classes-index.js (chargé par le layout) -->
+<script src="/js/classes-index.js" defer></script>

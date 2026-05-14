@@ -117,4 +117,4 @@
   </div>
 </div>
 
-<!-- Le JS de cette vue est externalisé dans /js/admin-logs.js (chargé par le layout) -->
+<script src="/js/admin-logs.js" defer></script>

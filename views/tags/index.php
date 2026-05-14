@@ -1,4 +1,7 @@
-
+<?php
+// views/tags/index.php
+// $tags injecté par TagController::index()
+?>
 <div class="page-header">
   <div>
     <h1>Tags</h1>
@@ -92,4 +95,4 @@
   </div>
 </div>
 
-<!-- Le JS de cette vue est externalisé dans /js/tags.js (chargé par le layout) -->
+<script src="/js/tags.js" defer></script>

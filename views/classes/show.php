@@ -1,3 +1,7 @@
+<?php
+// views/classes/show.php
+// $class, $students, $plans, $groups, $rooms injectés par ClassController::show()
+?>
 <!-- Conteneur portant le CLASS_ID injecté en data-attribute pour classes-show.js -->
 <div id="classShowData" data-class-id="<?= $class['id'] ?>" hidden></div>
 
@@ -179,4 +183,4 @@
   </div>
 </div>
 
-<!-- Le JS de cette vue est externalisé dans /js/classes-show.js (chargé par le layout) -->
+<script src="/js/classes-show.js" defer></script>
