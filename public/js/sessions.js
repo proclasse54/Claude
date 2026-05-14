@@ -1,4 +1,5 @@
-const PLANS = window.PLANS;
+const _plansEl = document.getElementById('plans-data');
+const PLANS = _plansEl ? JSON.parse(_plansEl.dataset.plans) : [];
 
 const TIME_SLOTS = [
   '07:00','07:30','08:00','08:30','09:00','09:30',
