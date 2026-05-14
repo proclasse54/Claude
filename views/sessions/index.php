@@ -285,5 +285,6 @@ $extraCss = '/css/sessions.css';
   </div>
 </div>
 
-<script nonce="<?= htmlspecialchars($cspNonce ?? '') ?>">window.PLANS = <?= json_encode(array_values($plans), JSON_HEX_TAG) ?>;</script>
+<!-- Données plans transmises via data-attribute (aucun script inline = zéro violation CSP) -->
+<div id="plans-data" data-plans="<?= htmlspecialchars(json_encode(array_values($plans), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP), ENT_QUOTES) ?>" hidden></div>
 <script src="/js/sessions.js" defer></script>
