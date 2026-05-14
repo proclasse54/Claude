@@ -117,9 +117,4 @@
   </div>
 </div>
 
-<script nonce="<?= htmlspecialchars($cspNonce ?? '') ?>">
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape')
-    document.querySelectorAll('.modal-overlay:not([hidden])').forEach(m => m.setAttribute('hidden', ''));
-});
-</script>
+<!-- Le JS de cette vue est externalisé dans /js/admin-logs.js (chargé par le layout) -->

@@ -1,3 +1,6 @@
+<!-- Conteneur portant le CLASS_ID injecté en data-attribute pour classes-show.js -->
+<div id="classShowData" data-class-id="<?= $class['id'] ?>" hidden></div>
+
 <div class="page-header">
   <div>
     <a href="/classes" class="btn btn-ghost btn-sm">← Retour</a>
@@ -176,99 +179,4 @@
   </div>
 </div>
 
-<script nonce="<?= htmlspecialchars($cspNonce ?? '') ?>">
-const CLASS_ID = <?= $class['id'] ?>;
-
-function showTab(name, btn) {
-  document.querySelectorAll('.tab-content').forEach(t => t.hidden = true);
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('tab-' + name).hidden = false;
-  btn.classList.add('active');
-}
-
-// ── Import par collage ─────────────────────────────────
-function openImportModal() {
-  document.getElementById('pronoteData').value = '';
-  document.getElementById('importPreview').hidden = true;
-  document.getElementById('importBtn').disabled = true;
-  document.getElementById('importModal').classList.add('is-open');
-  setTimeout(() => document.getElementById('pronoteData').focus(), 100);
-}
-
-function previewImport(text) {
-  const lines = text.trim().split('\n').filter(l => l.trim());
-  if (lines.length < 2) {
-    document.getElementById('importPreview').hidden = true;
-    document.getElementById('importBtn').disabled = true;
-    return;
-  }
-  // La 1ère ligne = en-têtes, les suivantes = élèves
-  const dataLines = lines.slice(1).filter(l => l.trim());
-  const count = dataLines.length;
-  document.getElementById('previewCount').textContent =
-    '✅ ' + count + ' élève' + (count > 1 ? 's' : '') + ' détecté' + (count > 1 ? 's' : '');
-  document.getElementById('importPreview').hidden = false;
-  document.getElementById('importBtn').disabled = count === 0;
-}
-
-function doImport() {
-  const text = document.getElementById('pronoteData').value.trim();
-  if (!text) return;
-  document.getElementById('importBtn').disabled = true;
-  document.getElementById('importBtn').textContent = 'Import en cours…';
-
-  fetch('/api/classes/' + CLASS_ID + '/import-paste', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ data: text })
-  })
-  .then(r => r.text()).then(text => {
-    try {
-      const d = JSON.parse(text);
-      if (d.ok) {
-        closeModal('importModal');
-        location.reload();
-      } else {
-        alert('Erreur : ' + (d.error || JSON.stringify(d)));
-      }
-    } catch(e) {
-      document.open(); document.write(text); document.close();
-    }
-  });
-}
-
-// ── Plans ──────────────────────────────────────────────
-function openNewPlanModal() { document.getElementById('newPlanModal').classList.add('is-open'); }
-
-function createPlan(e) {
-  e.preventDefault();
-  const fd = new FormData(e.target);
-  fetch('/api/classes/' + CLASS_ID + '/plans', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      room_id:  parseInt(fd.get('room_id'), 10),
-      group_id: fd.get('group_id') ? parseInt(fd.get('group_id'), 10) : null,
-      name:     fd.get('name') || 'Plan par défaut',
-    })
-  }).then(r => r.json()).then(d => {
-    if (d.ok) window.location = '/classes/' + CLASS_ID + '?tab=plans';
-    else alert('Erreur : ' + (d.error ?? JSON.stringify(d)));
-  });
-}
-
-function deletePlan(id) {
-  if (!confirm('Supprimer ce plan ?')) return;
-  fetch('/api/plans/' + id, { method: 'DELETE' })
-    .then(r => r.json()).then(d => { if (d.ok) location.reload(); });
-}
-
-(function() {
-  const params = new URLSearchParams(window.location.search);
-  if (params.get('tab') === 'plans') {
-    const btn = document.querySelector('.tab:nth-child(2)');
-    if (btn) showTab('plans', btn);
-  }
-})();
-
-</script>
+<!-- Le JS de cette vue est externalisé dans /js/classes-show.js (chargé par le layout) -->

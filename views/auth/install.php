@@ -60,6 +60,8 @@ $pageTitle = 'Installation — ProClasse';
       line-height: 1.6;
     }
   </style>
+  <!-- Détection du thème système avant le rendu (anti-flash) -->
+  <script src="/js/install-theme.js"></script>
 </head>
 <body>
   <div class="install-card">
@@ -140,13 +142,5 @@ $pageTitle = 'Installation — ProClasse';
 
     <?php endif ?>
   </div>
-
-  <script>
-    (function(){
-      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        document.documentElement.setAttribute('data-theme', 'dark');
-      }
-    })();
-  </script>
 </body>
 </html>
