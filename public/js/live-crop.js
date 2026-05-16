@@ -1,6 +1,6 @@
 /**
  * live-crop.js — Modale fiche élève + recadrage photo (crop interactif).
- * Dépend de live.js (window.apiFetch, window.seatStudentMap, SESSION_ID).
+ * Dépend de live.js (window.apiFetch, window.seatStudentMap, window.SESSION_ID).
  */
 
 // --------------------------------------------------
@@ -536,12 +536,10 @@ document.querySelectorAll('.student-modal-tab').forEach(btn => {
 modalRemoveBtn.addEventListener('click', () => {
   if (!_openStudentId) return;
 
-  apiFetch(`/api/sessions/${SESSION_ID}/remove-student`, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ student_id: _openStudentId }),
+  // DELETE /api/sessions/{id}/remove-student/{student_id}
+  apiFetch(`/api/sessions/${window.SESSION_ID}/remove-student/${_openStudentId}`, {
+    method: 'DELETE',
   })
-
   .then(d => {
     if (!d.ok) throw new Error(d.error || 'Erreur');
 
