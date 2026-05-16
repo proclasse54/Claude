@@ -47,28 +47,37 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { -webkit-font-smoothing: antialiased; scroll-behavior: smooth; }
+
+/*
+ * Layout racine : body occupe exactement la hauteur du viewport,
+ * le scroll est délégué à .main-content uniquement.
+ * La sidebar reste ainsi immobile quelle que soit la longueur du contenu.
+ */
+html, body {
+  height: 100dvh;
+  overflow: hidden; /* empêche le scroll global */
+}
+
 body {
   font-family: var(--font-body);
   font-size: var(--text-base);
   background: var(--bg);
   color: var(--text);
   display: flex;
-  min-height: 100dvh;
 }
 
 /* ── Sidebar ──────────────────────────────────────────────── */
 .sidebar {
   width: 220px;
-  min-height: 100dvh;
+  height: 100dvh;       /* occupe exactement la hauteur du viewport */
+  flex-shrink: 0;
   background: var(--sidebar-bg);
   color: var(--sidebar-text);
   display: flex;
   flex-direction: column;
   padding: var(--space-6) var(--space-4);
   gap: var(--space-6);
-  position: sticky;
-  top: 0;
-  flex-shrink: 0;
+  /* position:sticky n'est plus nécessaire : la sidebar ne scrolle plus */
 }
 .sidebar-logo {
   display: flex; align-items: center; gap: var(--space-3);
@@ -139,7 +148,10 @@ body {
 
 /* ── Main content ─────────────────────────────────────────── */
 .main-content {
-  flex: 1; padding: var(--space-8);
+  flex: 1;
+  height: 100dvh;        /* occupe toute la hauteur */
+  overflow-y: auto;      /* seul élément scrollable de la page */
+  padding: var(--space-8);
   max-width: 1200px;
   overflow-x: hidden;
 }
