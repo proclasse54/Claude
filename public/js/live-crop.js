@@ -186,7 +186,7 @@ function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 /**
  * Obtenir les coordonnées souris/tactile relatives au canvas.
  * Utilise getBoundingClientRect() ici (correct car appelé lors d'un événement
- * interactif — le canvas est donc visible et son layout est stable).
+ * interactif — le canvas est donc visible et son layout est stable)
  */
 function getPos(e) {
   const rect = cropCanvas.getBoundingClientRect();
@@ -536,8 +536,10 @@ document.querySelectorAll('.student-modal-tab').forEach(btn => {
 modalRemoveBtn.addEventListener('click', () => {
   if (!_openStudentId) return;
 
-  apiFetch(`/api/sessions/${SESSION_ID}/remove-student/${_openStudentId}`, {
-    method: 'DELETE',
+  apiFetch(`/api/sessions/${SESSION_ID}/remove-student`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ student_id: _openStudentId }),
   })
 
   .then(d => {
