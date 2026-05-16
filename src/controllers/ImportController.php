@@ -9,9 +9,12 @@ class ImportController
         require ROOT . '/views/import/index.php';
     }
 
-    // POST /import/photos → extraction PDF trombinoscope (logique déplacée depuis parse_trombi.php)
+    // POST /import/photos → extraction PDF trombinoscope
+    // Formulaire HTML multipart → protection CSRF requise
     public function photos(array $p): void
     {
+        Csrf::verify();
+
         // Fichier absent à cause d'un dépassement de limite PHP
         if (empty($_FILES) && (int)$_SERVER['CONTENT_LENGTH'] > 0) {
             Response::json(['error' => 'Fichier trop volumineux (limite serveur dépassée)'], 413);
@@ -133,9 +136,6 @@ class ImportController
         ]);
     }
 
-
-
-
     private static function splitNomPrenom(string $s): array
     {
         $s    = preg_replace('/[\s\xA0]+/u', ' ', trim($s));
@@ -155,6 +155,4 @@ class ImportController
         }
         return [implode(' ', $nom), implode(' ', $prenom)];
     }
-
-
 }

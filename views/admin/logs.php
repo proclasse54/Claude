@@ -21,7 +21,7 @@
   </div>
 <?php endif ?>
 
-<!-- Filtres -->
+<!-- Filtres (GET — pas de CSRF nécessaire) -->
 <form method="GET" action="/admin/logs" style="display:flex;gap:var(--space-3);margin-bottom:var(--space-5);align-items:center;flex-wrap:wrap">
   <select name="level" style="font-size:var(--text-sm);padding:var(--space-2) var(--space-3);border-radius:var(--radius-md);border:1px solid var(--border);background:var(--color-surface)">
     <option value="">Tous niveaux</option>
@@ -101,6 +101,7 @@
       <button class="modal-close" data-action="close-modal">&times;</button>
     </div>
     <form method="POST" action="/admin/logs/purge">
+      <?= Csrf::field() ?>
       <div class="form-group">
         <label for="before">Supprimer les entrées…</label>
         <select id="before" name="before">

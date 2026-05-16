@@ -83,6 +83,7 @@
       <button class="modal-close" data-action="close-modal">&times;</button>
     </div>
     <form method="POST" action="/admin/users">
+      <?= Csrf::field() ?>
       <div class="form-group">
         <label for="c_email">Email</label>
         <input type="email" id="c_email" name="email" required autocomplete="off" placeholder="prenom.nom@etab.fr">
@@ -114,6 +115,7 @@
       <button class="modal-close" data-action="close-modal">&times;</button>
     </div>
     <form id="formEdit" method="POST" action="">
+      <?= Csrf::field() ?>
       <div class="form-group">
         <label for="e_email">Email</label>
         <input type="email" id="e_email" name="email" required autocomplete="off">
@@ -145,4 +147,3 @@
 </div>
 
 <script src="/js/admin-users.js" nonce="<?= htmlspecialchars($cspNonce ?? '') ?>"></script>
-

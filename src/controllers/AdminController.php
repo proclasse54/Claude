@@ -33,6 +33,8 @@ class AdminController
     public function userCreate(): void
     {
         Auth::requireAdmin();
+        Csrf::verify();
+
         $email    = trim($_POST['email']    ?? '');
         $password = trim($_POST['password'] ?? '');
         $role     = $_POST['role'] ?? 'user';
@@ -68,6 +70,8 @@ class AdminController
     public function userUpdate(array $params): void
     {
         Auth::requireAdmin();
+        Csrf::verify();
+
         $id       = (int) ($params['id'] ?? 0);
         $email    = trim($_POST['email']    ?? '');
         $role     = $_POST['role']      ?? 'user';
@@ -104,6 +108,7 @@ class AdminController
     }
 
     // ── DELETE /admin/users/{id} — supprimer (JSON) ───────────
+    // Requête fetch() DELETE depuis le JS → protégée par CORS, pas de CSRF HTML
     public function userDelete(array $params): void
     {
         Auth::requireAdmin();
@@ -160,6 +165,8 @@ class AdminController
     public function logsPurge(): void
     {
         Auth::requireAdmin();
+        Csrf::verify();
+
         $before = $_POST['before'] ?? '';
         $pdo    = Database::get();
 

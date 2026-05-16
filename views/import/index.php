@@ -2,8 +2,6 @@
 // views/import/index.php
 // $pageTitle injecté par ImportController::index()
 // Tout le JS a été externalisé dans public/js/import.js
-// Le <script> inline a été supprimé car interdit par la CSP (script-src-elem sans nonce valide
-// au moment de l’évaluation du ob_start, qui place le script au milieu du body).
 ?>
 <?php
 ob_start();
@@ -12,7 +10,7 @@ ob_start();
 
   <div class="import-header">
     <h1 class="import-title">📥 Importer depuis Pronote</h1>
-    <p class="import-subtitle">Suivez les 3 étapes dans l’ordre recommandé : élèves d’abord, puis séances, puis photos.</p>
+    <p class="import-subtitle">Suivez les 3 étapes dans l'ordre recommandé : élèves d'abord, puis séances, puis photos.</p>
   </div>
 
   <!-- Onglets -->
@@ -35,6 +33,7 @@ ob_start();
   </div>
 
   <!-- ══════════════════ PANNEAU ÉLÈVES ══════════════════ -->
+  <!-- studentsForm est soumis via fetch() en JS → protégé par CORS, pas de CSRF HTML nécessaire -->
   <div class="import-panel active" id="tab-students">
 
     <div class="import-how">
@@ -61,7 +60,7 @@ ob_start();
           id="studentsArea"
           name="csv"
           class="import-textarea"
-          placeholder="Collez ici le contenu copié depuis Pronote (Ctrl+V)…&#10;&#10;La première ligne doit contenir les en-têtes : Nom, Prénom, Classe…"
+          placeholder="Collez ici le contenu copié depuis Pronote (Ctrl+V)…&#10;&#10;La première ligne doit contenir les en-têtes : Nom, Prénom, Classe…"
           spellcheck="false"
         ></textarea>
       </div>
@@ -78,6 +77,7 @@ ob_start();
   </div>
 
   <!-- ══════════════════ PANNEAU SÉANCES ══════════════════ -->
+  <!-- sessionsForm est soumis via fetch() en JS → protégé par CORS, pas de CSRF HTML nécessaire -->
   <div class="import-panel" id="tab-sessions">
 
     <div class="import-how">
@@ -127,6 +127,7 @@ ob_start();
 
     <form id="photosForm" class="import-form" enctype="multipart/form-data"
           action="/import/photos" method="post">
+      <?= Csrf::field() ?>
       <label class="import-label">
         Fichier <code>.pdf</code> trombinoscope
       </label>
@@ -219,8 +220,6 @@ ob_start();
 }
 </style>
 
-<!-- Script sans defer : injecté en bas de $content (lui-même en bas de <body>),
-     le DOM est déjà prêt à ce point — pas besoin de DOMContentLoaded ni de defer. -->
 <script src="/js/import.js" nonce="<?= htmlspecialchars($cspNonce ?? '') ?>"></script>
 <?php
 $content = ob_get_clean();
