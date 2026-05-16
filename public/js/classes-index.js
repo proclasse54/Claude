@@ -1,3 +1,53 @@
+// ── Initialisation des event listeners ──────────────────────────────────────
+// Tous les handlers sont enregistrés ici (plus de onclick= inline dans le PHP)
+// afin de satisfaire la CSP script-src sans unsafe-hashes ni unsafe-inline.
+document.addEventListener('DOMContentLoaded', () => {
+
+  // Boutons d'ouverture de la modale import (header + empty-state)
+  document.getElementById('btnOpenImport')?.addEventListener('click', openImportModal);
+  document.getElementById('btnOpenImportEmpty')?.addEventListener('click', openImportModal);
+
+  // Bouton d'ouverture de la modale création manuelle
+  document.getElementById('btnOpenCreateClass')?.addEventListener('click', openCreateClassModal);
+
+  // Fermeture des modales via data-close-modal (délégation — couvre tous les boutons Annuler et ×)
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('[data-close-modal]');
+    if (btn) closeModal(btn.dataset.closeModal);
+  });
+
+  // Bouton « Importer » dans la modale Pronote
+  document.getElementById('importBtn')?.addEventListener('click', doImport);
+
+  // Textarea Pronote — prévisualisation en temps réel
+  document.getElementById('pronoteData')?.addEventListener('input', e => previewImport(e.target.value));
+
+  // Formulaire de création manuelle de classe
+  document.getElementById('createClassForm')?.addEventListener('submit', createClass);
+
+  // Suppression individuelle — délégation sur le grid des cartes
+  document.getElementById('classesGrid')?.addEventListener('click', e => {
+    const btn = e.target.closest('.btn-delete-class');
+    if (btn) deleteClass(parseInt(btn.dataset.id, 10), btn.dataset.name);
+  });
+
+  // Checkboxes des classes — délégation pour updateSelection()
+  document.getElementById('classesGrid')?.addEventListener('change', e => {
+    if (e.target.classList.contains('class-checkbox')) updateSelection();
+  });
+
+  // Checkbox « Tout sélectionner »
+  document.getElementById('selectAll')?.addEventListener('change', e => toggleSelectAll(e.target));
+
+  // Bouton « Supprimer la sélection »
+  document.getElementById('deleteSelectedBtn')?.addEventListener('click', deleteSelected);
+
+  // Bouton « Tout supprimer »
+  document.getElementById('btnDeleteAll')?.addEventListener('click', deleteAll);
+});
+
+// ── Modale import Pronote ────────────────────────────────────────────────────
+
 function openImportModal() {
   document.getElementById('pronoteData').value = '';
   document.getElementById('importPreview').hidden = true;
@@ -60,6 +110,8 @@ function doImport() {
   });
 }
 
+// ── Modale création manuelle ─────────────────────────────────────────────────
+
 function openCreateClassModal() { document.getElementById('createClassModal').removeAttribute('hidden'); }
 
 function createClass(e) {
@@ -69,11 +121,15 @@ function createClass(e) {
     .then(r => r.json()).then(d => { if (d.ok) window.location = '/classes/' + d.id; });
 }
 
+// ── Suppression ──────────────────────────────────────────────────────────────
+
 function deleteClass(id, name) {
   if (!confirm('Supprimer "' + name + '" et tous ses \u00e9l\u00e8ves ?')) return;
   fetch('/api/classes/' + id, { method: 'DELETE' })
     .then(r => r.json()).then(d => { if (d.ok) location.reload(); });
 }
+
+// ── Sélection multiple ───────────────────────────────────────────────────────
 
 function updateSelection() {
   const checked = document.querySelectorAll('.class-checkbox:checked');
@@ -105,4 +161,15 @@ function deleteAll() {
   fetch('/api/classes', { method: 'DELETE' })
     .then(r => r.json())
     .then(d => { if (d.ok) location.reload(); else alert('Erreur : ' + d.error); });
+}
+
+// ── Fermeture des modales ────────────────────────────────────────────────────
+
+/**
+ * Masque une modale par son id.
+ * Appelé depuis les boutons Annuler/× via data-close-modal (voir DOMContentLoaded).
+ */
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.setAttribute('hidden', '');
 }
