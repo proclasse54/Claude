@@ -1,10 +1,7 @@
 <?php
 // views/import/index.php
-// $pageTitle injecté par ImportController::index()
+// $pageTitle injecté par ImportController::index() via ob_start()
 // Tout le JS a été externalisé dans public/js/import.js
-?>
-<?php
-ob_start();
 ?>
 <div class="import-page">
 
@@ -221,7 +218,3 @@ ob_start();
 </style>
 
 <script src="/js/import.js" nonce="<?= htmlspecialchars($cspNonce ?? '') ?>"></script>
-<?php
-$content = ob_get_clean();
-require __DIR__ . '/../layouts/app.php';
-?>
