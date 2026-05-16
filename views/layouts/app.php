@@ -1,3 +1,9 @@
+<?php
+// Le nonce CSP est lu depuis la constante CSP_NONCE (définie dans public/index.php)
+// afin d'être accessible quel que soit le contrôleur qui require ce layout.
+// La variable locale $cspNonce est conservée en fallback pour compatibilité.
+$nonce = defined('CSP_NONCE') ? CSP_NONCE : ($cspNonce ?? '');
+?>
 <!DOCTYPE html>
 <!--
   data-theme="light" est le fallback HTML sûr.
@@ -17,7 +23,7 @@
   3. Gele toutes les transitions CSS pendant l'init pour éviter
      toute animation parasite au chargement ou à la navigation.
 -->
-<script nonce="<?= htmlspecialchars($cspNonce ?? '') ?>">
+<script nonce="<?= htmlspecialchars($nonce) ?>">
   (function(){
     var saved = localStorage.getItem('proclasse-theme');
     var theme = saved || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
@@ -38,7 +44,7 @@
   })();
 </script>
 <link rel="stylesheet" href="/css/app.css">
-<script type="module" src="/js/emoji-picker.js" nonce="<?= htmlspecialchars($cspNonce ?? '') ?>"></script>
+<script type="module" src="/js/emoji-picker.js" nonce="<?= htmlspecialchars($nonce) ?>"></script>
 </head>
 <body>
 <nav class="sidebar">
@@ -112,6 +118,6 @@
 <main class="main-content">
   <?= $content ?? '' ?>
 </main>
-<script src="/js/app.js" nonce="<?= htmlspecialchars($cspNonce ?? '') ?>"></script>
+<script src="/js/app.js" nonce="<?= htmlspecialchars($nonce) ?>"></script>
 </body>
 </html>
