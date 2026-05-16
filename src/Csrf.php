@@ -1,4 +1,5 @@
 <?php
+/*
 // src/Csrf.php
 // ============================================================
 //  Protection CSRF (Cross-Site Request Forgery) — CWE-352
@@ -19,9 +20,9 @@
 //    défense officielle recommandée par OWASP.
 //
 //  Usage :
-//    Dans la vue  → <?= Csrf::field() ?>   (insère un <input type="hidden">)
+//    Dans la vue  → <?= Csrf::field() ?>  (insère un <input type="hidden">)
 //    Dans le POST → Csrf::verify()         (arrête avec HTTP 419 si invalide)
-// ============================================================
+// ============================================================*/
 class Csrf
 {
     /** Clé de stockage du token dans la session. */
