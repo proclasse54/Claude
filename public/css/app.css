@@ -682,13 +682,10 @@ emoji-picker {
 }
 
 
-
-
-
+/* ── Photo dans les sièges ────────────────────────────────── */
 .seat-photo {
     width: 100%;
     height: 100%;
-    width: 100%;
     object-fit: cover;
     border-radius: var(--radius-sm, 4px);
     display: block;
@@ -708,13 +705,13 @@ emoji-picker {
     text-transform: uppercase;
 }
 
-/* Conteneur de la photo dans chaque siège */
+/* Conteneur de la photo dans chaque siège — taille fixe pour uniformité */
 .seat-photo-wrapper {
-  width: 100%;
-  aspect-ratio: 1 / 1;
+  width: 48px;    /* taille fixe indépendante de la hauteur du siège */
+  height: 48px;
+  flex-shrink: 0;
   overflow: hidden;
   border-radius: var(--radius-sm);
-  flex-shrink: 0;
 }
 
 
@@ -1159,7 +1156,6 @@ details[open] .modal-details-icon {
 .modal-photo-empty { font-size:var(--text-sm,.875rem); color:var(--color-text-muted,#888); }
 .modal-photo-actions { display:flex; gap:.5rem; flex-wrap:wrap; justify-content:center; }
 .form-hint { font-size:var(--text-xs,.8rem); color:var(--color-text-muted,#888); text-align:center; }
-
 
 
 
