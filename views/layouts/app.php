@@ -55,18 +55,26 @@
       Logs
     </a></li>
     <?php endif ?>
+
+    <!-- Séparateur avant les actions utilisateur -->
+    <li class="sidebar-separator"></li>
+
+    <!-- Nom d'utilisateur + déconnexion sur la même ligne -->
+    <li class="sidebar-user-row">
+      <span class="sidebar-user"><?= htmlspecialchars(Auth::user()['username'] ?? '') ?></span>
+      <a href="/logout" class="btn-logout" title="Se déconnecter">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </a>
+    </li>
+
+    <!-- Bouton mode nuit -->
+    <li>
+      <button class="theme-toggle sidebar-nav-btn" data-theme-toggle aria-label="Changer le thème">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        Thème
+      </button>
+    </li>
   </ul>
-
-  <div class="sidebar-footer">
-    <span class="sidebar-user"><?= htmlspecialchars(Auth::user()['username'] ?? '') ?></span>
-    <a href="/logout" class="btn-logout" title="Se déconnecter">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-    </a>
-  </div>
-
-  <button class="theme-toggle" data-theme-toggle aria-label="Changer le thème">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-  </button>
 </nav>
 <main class="main-content">
   <?= $content ?? '' ?>
