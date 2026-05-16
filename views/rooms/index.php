@@ -1,6 +1,6 @@
 <?php
-$pageTitle = 'Salles — ProClasse';
-ob_start();
+// views/rooms/index.php
+// $rooms injecté par RoomController::index()
 ?>
 <div class="page-header">
   <div>
@@ -30,20 +30,20 @@ ob_start();
     </div>
     <div class="card-footer">
       <a href="/rooms/<?= $r['id'] ?>/edit" class="btn btn-sm btn-ghost">Modifier</a>
-      <button class="btn btn-sm btn-danger" onclick="deleteRoom(<?= $r['id'] ?>, '<?= htmlspecialchars($r['name']) ?>')">Supprimer</button>
+      <!-- onclick= supprimé : la suppression est gérée par délégation dans rooms.js
+           via data-id et data-name, conformément à la CSP script-src-attr. -->
+      <button class="btn btn-sm btn-danger btn-delete-room"
+              data-id="<?= $r['id'] ?>"
+              data-name="<?= htmlspecialchars($r['name']) ?>">
+        Supprimer
+      </button>
     </div>
   </div>
   <?php endforeach; ?>
 </div>
 <?php endif; ?>
 
-<script nonce="<?= htmlspecialchars($cspNonce ?? '') ?>">
-function deleteRoom(id, name) {
-  if (!confirm('Supprimer la salle "' + name + '" ?')) return;
-  fetch('/api/rooms/' + id, {method:'DELETE'})
-    .then(r => r.json()).then(d => { if(d.ok) location.reload(); });
-}
-</script>
-<?php
-$content = ob_get_clean();
-require __DIR__ . '/../layouts/app.php';
+<!-- <script> inline supprimé : deleteRoom() est dans public/js/rooms.js
+     Script sans defer : injecté en bas de $content (lui-même en bas de <body>),
+     le DOM est déjà prêt à ce point — pas besoin de DOMContentLoaded ni de defer. -->
+<script src="/js/rooms.js" nonce="<?= htmlspecialchars($cspNonce ?? '') ?>"></script>
