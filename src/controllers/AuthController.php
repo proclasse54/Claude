@@ -36,6 +36,12 @@ class AuthController
     // ================================================================
     public function loginSubmit(): void
     {
+        // Vérifie le token CSRF avant tout traitement.
+        // Protège contre les attaques Cross-Site Request Forgery (CWE-352) :
+        // un site tiers ne peut pas connaître le token stocké en session,
+        // donc une requête forgée sera rejetée avec HTTP 419.
+        Csrf::verify();
+
         // Récupère et nettoie les champs du formulaire
         // trim() supprime les espaces inutiles en début/fin de chaîne
         $email    = trim($_POST['email']    ?? '');
@@ -110,6 +116,12 @@ class AuthController
 
         // ── Traitement du formulaire d'installation (soumis en POST) ──
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+            // Vérifie le token CSRF avant tout traitement.
+            // Même logique que pour /login : empêche une soumission forgée
+            // depuis un site tiers (CWE-352).
+            Csrf::verify();
+
             $email    = trim($_POST['email']    ?? '');
             $password = trim($_POST['password'] ?? '');
             $confirm  = trim($_POST['confirm']  ?? ''); // confirmation du mot de passe
@@ -150,7 +162,7 @@ class AuthController
                 // Enregistre l'événement dans les logs d'application
                 Logger::info('install', 'admin_created', ['email' => $email]);
 
-                $message = 'Compte admin créé ! Vous pouvez maintenant <a href="/login">vous connecter</a>.';
+                $message = 'Compte admin créé ! Vous pouvez maintenant <a href="/login">vous connecter</a>.';
                 $type    = 'success';
             }
         }

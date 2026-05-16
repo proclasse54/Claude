@@ -88,6 +88,7 @@ $pageTitle = 'Installation — ProClasse';
       <?php endif ?>
 
       <form method="POST" action="/install">
+        <?= Csrf::field() ?>
         <div class="form-group">
           <label for="email">Adresse email admin</label>
           <input
