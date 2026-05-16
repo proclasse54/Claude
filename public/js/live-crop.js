@@ -3,9 +3,6 @@
  * Dépend de live.js (window.apiFetch, window.seatStudentMap, SESSION_ID).
  */
 
-// NOTE : SESSION_ID, apiFetch et seatStudentMap sont déjà définis dans live.js.
-window.seatStudentMap = window.seatStudentMap;
-
 // --------------------------------------------------
 // Références DOM — modale fiche élève
 // --------------------------------------------------
