@@ -4,49 +4,48 @@ const CLASS_ID = parseInt(document.getElementById('classShowData').dataset.class
 // ── Initialisation des event listeners ──────────────────────────────────────
 // Tous les handlers sont enregistrés ici (plus de onclick= inline dans le PHP)
 // afin de satisfaire la CSP script-src sans unsafe-hashes ni unsafe-inline.
-document.addEventListener('DOMContentLoaded', () => {
+// NOTE : pas de DOMContentLoaded — le script est injecté en bas de <body>
+// via $content, donc le DOM est déjà entièrement construit à ce point.
 
-  // Navigation par onglets — délégation sur .tabs via data-tab
-  document.querySelector('.tabs')?.addEventListener('click', e => {
-    const btn = e.target.closest('.tab[data-tab]');
-    if (btn) showTab(btn.dataset.tab, btn);
-  });
-
-  // Bouton "Importer depuis Pronote" (onglet Élèves)
-  document.getElementById('btnOpenImport')?.addEventListener('click', openImportModal);
-
-  // Bouton "+ Nouveau plan" (onglet Plans)
-  document.getElementById('btnOpenNewPlan')?.addEventListener('click', openNewPlanModal);
-
-  // Fermeture des modales via data-close-modal (délégation globale)
-  document.addEventListener('click', e => {
-    const btn = e.target.closest('[data-close-modal]');
-    if (btn) closeModal(btn.dataset.closeModal);
-  });
-
-  // Textarea Pronote — prévisualisation en temps réel
-  document.getElementById('pronoteData')?.addEventListener('input', e => previewImport(e.target.value));
-
-  // Bouton « Importer » dans la modale Pronote
-  document.getElementById('importBtn')?.addEventListener('click', doImport);
-
-  // Formulaire nouveau plan
-  document.getElementById('newPlanForm')?.addEventListener('submit', createPlan);
-
-  // Suppression de plan — délégation sur le grid des plans
-  document.getElementById('tab-plans')?.addEventListener('click', e => {
-    const btn = e.target.closest('.btn-delete-plan');
-    if (btn) deletePlan(parseInt(btn.dataset.planId, 10));
-  });
-
-  // Restauration de l'onglet actif depuis le paramètre URL ?tab=
-  const params = new URLSearchParams(window.location.search);
-  const tabParam = params.get('tab');
-  if (tabParam) {
-    const btn = document.querySelector(`.tab[data-tab="${tabParam}"]`);
-    if (btn) showTab(tabParam, btn);
-  }
+// Navigation par onglets — délégation sur .tabs via data-tab
+document.querySelector('.tabs')?.addEventListener('click', e => {
+  const btn = e.target.closest('.tab[data-tab]');
+  if (btn) showTab(btn.dataset.tab, btn);
 });
+
+// Bouton "Importer depuis Pronote" (onglet Élèves)
+document.getElementById('btnOpenImport')?.addEventListener('click', openImportModal);
+
+// Bouton "+ Nouveau plan" (onglet Plans)
+document.getElementById('btnOpenNewPlan')?.addEventListener('click', openNewPlanModal);
+
+// Fermeture des modales via data-close-modal (délégation globale)
+document.addEventListener('click', e => {
+  const btn = e.target.closest('[data-close-modal]');
+  if (btn) closeModal(btn.dataset.closeModal);
+});
+
+// Textarea Pronote — prévisualisation en temps réel
+document.getElementById('pronoteData')?.addEventListener('input', e => previewImport(e.target.value));
+
+// Bouton « Importer » dans la modale Pronote
+document.getElementById('importBtn')?.addEventListener('click', doImport);
+
+// Formulaire nouveau plan
+document.getElementById('newPlanForm')?.addEventListener('submit', createPlan);
+
+// Suppression de plan — délégation sur le grid des plans
+document.getElementById('tab-plans')?.addEventListener('click', e => {
+  const btn = e.target.closest('.btn-delete-plan');
+  if (btn) deletePlan(parseInt(btn.dataset.planId, 10));
+});
+
+// Restauration de l'onglet actif depuis le paramètre URL ?tab=
+const _tabParam = new URLSearchParams(window.location.search).get('tab');
+if (_tabParam) {
+  const _tabBtn = document.querySelector(`.tab[data-tab="${_tabParam}"]`);
+  if (_tabBtn) showTab(_tabParam, _tabBtn);
+}
 
 // ── Navigation par onglets ──────────────────────────────────────────────────────
 
@@ -141,7 +140,7 @@ function deletePlan(id) {
 
 /**
  * Masque une modale par son id.
- * Appelé depuis les boutons Annuler/× via data-close-modal (voir DOMContentLoaded).
+ * Appelé depuis les boutons Annuler/× via data-close-modal (voir les listeners ci-dessus).
  */
 function closeModal(id) {
   const el = document.getElementById(id);

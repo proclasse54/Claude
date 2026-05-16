@@ -132,4 +132,6 @@
   </div>
 </div>
 
-<script src="/js/classes-index.js" defer></script>
+<!-- Script sans defer : injecté en bas de $content (lui-même en bas de <body>),
+     le DOM est déjà prêt à ce point — pas besoin de DOMContentLoaded ni de defer. -->
+<script src="/js/classes-index.js" nonce="<?= htmlspecialchars($cspNonce ?? '') ?>"></script>
