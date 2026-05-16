@@ -610,6 +610,7 @@ deleteSessionConfirm.addEventListener('click', () => {
     });
 });
 
-// Expose apiFetch et seatStudentMap globalement pour live-crop.js
+// Expose sur window pour live-crop.js
 window.apiFetch       = apiFetch;
 window.seatStudentMap = seatStudentMap;
+window.SESSION_ID     = SESSION_ID;
