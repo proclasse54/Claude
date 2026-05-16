@@ -5,7 +5,9 @@
 // Le <script> inline a été supprimé car interdit par la CSP (script-src-elem sans nonce valide
 // au moment de l’évaluation du ob_start, qui place le script au milieu du body).
 ?>
-
+<?php
+ob_start();
+?>
 <div class="import-page">
 
   <div class="import-header">
@@ -220,3 +222,7 @@
 <!-- Script sans defer : injecté en bas de $content (lui-même en bas de <body>),
      le DOM est déjà prêt à ce point — pas besoin de DOMContentLoaded ni de defer. -->
 <script src="/js/import.js" nonce="<?= htmlspecialchars($cspNonce ?? '') ?>"></script>
+<?php
+$content = ob_get_clean();
+require __DIR__ . '/../layouts/app.php';
+?>
