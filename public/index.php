@@ -44,7 +44,12 @@ if ($appCfg['debug'] ?? false) {
 Auth::start();
 
 // ── CSP Nonce ────────────────────────────────────────────
+// $cspNonce est aussi exposé en tant que constante CSP_NONCE pour être
+// accessible dans tous les contrôleurs et layouts via require,
+// sans avoir à passer la variable explicitement dans chaque scope.
 $cspNonce = base64_encode(random_bytes(16));
+define('CSP_NONCE', $cspNonce);
+
 header(
     "Content-Security-Policy-Report-Only: " .
     "default-src 'self'; " .
