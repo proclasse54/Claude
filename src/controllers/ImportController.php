@@ -6,7 +6,12 @@ class ImportController
     // GET /import  → affiche la page unifiée
     public function index(array $p): void
     {
+        Auth::requireLogin();
+        $pageTitle = 'Importer';
+        ob_start();
         require ROOT . '/views/import/index.php';
+        $content = ob_get_clean();
+        require ROOT . '/views/layouts/app.php';
     }
 
     // POST /import/photos → extraction PDF trombinoscope
