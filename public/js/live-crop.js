@@ -350,17 +350,26 @@ function renderPhotoTab(studentId) {
   modalPhotoHint.textContent = 'Formats : JPG, PNG, WEBP. Max 2 Mo.';
 
   // Charger la photo courante (recadrée) pour la prévisualisation
+  // createElement évite les attributs onerror inline bloqués par la CSP
   const cacheBust = Date.now();
-  modalPhotoPreview.innerHTML = `
-    <img src="/photo?student_id=${studentId}&t=${cacheBust}"
-         alt="Photo de l'élève"
-         style="width:100px;height:100px;object-fit:cover;border-radius:var(--radius-md);"
-         onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-    <div style="width:100px;height:100px;display:none;align-items:center;justify-content:center;
-                background:var(--color-surface-offset);border-radius:var(--radius-md);
-                color:var(--color-text-muted);font-size:var(--text-sm)">
-      Pas de photo
-    </div>`;
+  modalPhotoPreview.innerHTML = '';
+
+  const prevImg = document.createElement('img');
+  prevImg.src = `/photo?student_id=${studentId}&t=${cacheBust}`;
+  prevImg.alt = "Photo de l'élève";
+  prevImg.style.cssText = 'width:100px;height:100px;object-fit:cover;border-radius:var(--radius-md);';
+
+  const prevFallback = document.createElement('div');
+  prevFallback.style.cssText = 'width:100px;height:100px;display:none;align-items:center;justify-content:center;background:var(--color-surface-offset);border-radius:var(--radius-md);color:var(--color-text-muted);font-size:var(--text-sm)';
+  prevFallback.textContent = 'Pas de photo';
+
+  prevImg.addEventListener('error', () => {
+    prevImg.style.display      = 'none';
+    prevFallback.style.display = 'flex';
+  });
+
+  modalPhotoPreview.appendChild(prevImg);
+  modalPhotoPreview.appendChild(prevFallback);
 
   // Boutons principaux : Modifier le recadrage + Changer la photo + Supprimer
   photoMainActions.innerHTML = `
@@ -439,10 +448,15 @@ modalPhotoInput.addEventListener('change', e => {
 function openStudentModal(studentId, name, className) {
   _openStudentId = studentId;
 
-  // Remplir l'en-tête
-  modalAvatar.innerHTML = `<img src="/photo?student_id=${studentId}" alt="${name}"
-    style="width:56px;height:56px;object-fit:cover;border-radius:var(--radius-full);"
-    onerror="this.style.display='none'">`;
+  // Remplir l'en-tête — createElement évite un onerror inline bloqué par la CSP
+  const avatarImg = document.createElement('img');
+  avatarImg.src = `/photo?student_id=${studentId}`;
+  avatarImg.alt = name;
+  avatarImg.style.cssText = 'width:56px;height:56px;object-fit:cover;border-radius:var(--radius-full);';
+  avatarImg.addEventListener('error', () => { avatarImg.style.display = 'none'; });
+  modalAvatar.innerHTML = '';
+  modalAvatar.appendChild(avatarImg);
+
   modalName.textContent  = name;
   modalClass.textContent = className;
 
