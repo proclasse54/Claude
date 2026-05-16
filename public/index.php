@@ -51,7 +51,7 @@ $cspNonce = base64_encode(random_bytes(16));
 define('CSP_NONCE', $cspNonce);
 
 header(
-    "Content-Security-Policy-Report-Only: " .
+    "Content-Security-Policy: " .
     "default-src 'self'; " .
     "script-src 'self' 'nonce-{$cspNonce}'; " .
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " .
@@ -62,6 +62,9 @@ header(
     "base-uri 'self'; " .
     "form-action 'self';"
 );
+
+// Fallback pour IE 11 / Safari < 10 qui ignorent frame-ancestors CSP
+header('X-Frame-Options: DENY');
 
 // ── Routes PUBLIQUES (sans Auth::check) ──────────────────────
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
