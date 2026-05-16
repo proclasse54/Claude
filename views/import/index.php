@@ -1,8 +1,8 @@
 <?php
 // views/import/index.php
-// $pageTitle injecté par ImportController::index() via ob_start()
-// Tout le JS a été externalisé dans public/js/import.js
+// $pageTitle injecté par ImportController::index()
 ?>
+<?php ob_start(); ?>
 <div class="import-page">
 
   <div class="import-header">
@@ -30,9 +30,7 @@
   </div>
 
   <!-- ══════════════════ PANNEAU ÉLÈVES ══════════════════ -->
-  <!-- studentsForm est soumis via fetch() en JS → protégé par CORS, pas de CSRF HTML nécessaire -->
   <div class="import-panel active" id="tab-students">
-
     <div class="import-how">
       <div class="import-how-title">Comment exporter depuis Pronote ?</div>
       <ol class="import-how-steps">
@@ -42,41 +40,29 @@
         <li>Collez directement ci-dessous</li>
       </ol>
     </div>
-
     <form id="studentsForm" class="import-form">
       <label class="import-label" for="studentsArea">
         Données élèves <span class="import-label-hint">(coller le tableau Pronote)</span>
       </label>
-
       <div class="import-paste-zone" id="studentsPasteZone">
         <div class="import-paste-hint" id="studentsPasteHint">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".4"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
           <span>Cliquez ici puis collez avec <kbd>Ctrl+V</kbd></span>
         </div>
-        <textarea
-          id="studentsArea"
-          name="csv"
-          class="import-textarea"
+        <textarea id="studentsArea" name="csv" class="import-textarea"
           placeholder="Collez ici le contenu copié depuis Pronote (Ctrl+V)…&#10;&#10;La première ligne doit contenir les en-têtes : Nom, Prénom, Classe…"
-          spellcheck="false"
-        ></textarea>
+          spellcheck="false"></textarea>
       </div>
-
       <div id="studentsPreview" class="import-preview" hidden></div>
-
       <div class="import-actions">
-        <button type="submit" class="btn btn-primary" id="studentsBtn">
-          ⚙️ Importer les élèves
-        </button>
+        <button type="submit" class="btn btn-primary" id="studentsBtn">⚙️ Importer les élèves</button>
         <div id="studentsResult" class="import-result" hidden></div>
       </div>
     </form>
   </div>
 
   <!-- ══════════════════ PANNEAU SÉANCES ══════════════════ -->
-  <!-- sessionsForm est soumis via fetch() en JS → protégé par CORS, pas de CSRF HTML nécessaire -->
   <div class="import-panel" id="tab-sessions">
-
     <div class="import-how">
       <div class="import-how-title">Comment exporter depuis Pronote ?</div>
       <ol class="import-how-steps">
@@ -86,11 +72,8 @@
         <li>Déposez le fichier ci-dessous</li>
       </ol>
     </div>
-
     <form id="sessionsForm" class="import-form">
-      <label class="import-label">
-        Fichier <code>.ics</code> Pronote
-      </label>
+      <label class="import-label">Fichier <code>.ics</code> Pronote</label>
       <div class="import-dropzone" id="icsDropzone">
         <div class="import-dropzone-icon">📅</div>
         <div class="import-dropzone-text">
@@ -101,9 +84,7 @@
         <div class="import-dropzone-filename" id="icsFilename"></div>
       </div>
       <div class="import-actions">
-        <button type="submit" class="btn btn-primary" id="sessionsBtn" disabled>
-          📅 Importer les séances
-        </button>
+        <button type="submit" class="btn btn-primary" id="sessionsBtn" disabled>📅 Importer les séances</button>
         <div id="sessionsResult" class="import-result" hidden></div>
       </div>
     </form>
@@ -111,7 +92,6 @@
 
   <!-- ══════════════════ PANNEAU PHOTOS ══════════════════ -->
   <div class="import-panel" id="tab-photos">
-
     <div class="import-how">
       <div class="import-how-title">Comment exporter depuis Pronote ?</div>
       <ol class="import-how-steps">
@@ -121,13 +101,10 @@
         <li>Déposez le fichier ci-dessous</li>
       </ol>
     </div>
-
     <form id="photosForm" class="import-form" enctype="multipart/form-data"
           action="/import/photos" method="post">
       <?= Csrf::field() ?>
-      <label class="import-label">
-        Fichier <code>.pdf</code> trombinoscope
-      </label>
+      <label class="import-label">Fichier <code>.pdf</code> trombinoscope</label>
       <div class="import-dropzone" id="pdfDropzone">
         <div class="import-dropzone-icon">🖼</div>
         <div class="import-dropzone-text">
@@ -137,18 +114,14 @@
         <input type="file" name="pdf" id="pdfFile" accept=".pdf" class="import-dropzone-input">
         <div class="import-dropzone-filename" id="pdfFilename"></div>
       </div>
-
       <div class="import-progress" id="photosProgress" hidden>
         <div class="import-progress-bar">
           <div class="import-progress-fill" id="photosProgressFill"></div>
         </div>
         <div class="import-progress-label" id="photosProgressLabel">Extraction en cours…</div>
       </div>
-
       <div class="import-actions">
-        <button type="submit" class="btn btn-primary" id="photosBtn" disabled>
-          🖼️ Extraire les photos
-        </button>
+        <button type="submit" class="btn btn-primary" id="photosBtn" disabled>🖼️ Extraire les photos</button>
         <div id="photosResult" class="import-result" hidden></div>
       </div>
     </form>
@@ -157,7 +130,6 @@
 </div>
 
 <style>
-/* ── Zone de collage encadrée ──────────────────────────────────────────── */
 .import-paste-zone {
   position: relative;
   border: 2px dashed var(--color-border);
@@ -177,8 +149,6 @@
   border-color: var(--color-primary);
   background: var(--color-primary-highlight);
 }
-
-/* Hint centré visible quand vide */
 .import-paste-hint {
   position: absolute;
   inset: 0;
@@ -194,11 +164,7 @@
   padding: 1rem;
   transition: opacity var(--transition-interactive);
 }
-.import-paste-zone.has-content .import-paste-hint {
-  opacity: 0;
-}
-
-/* La textarea remplit toute la zone, fond transparent */
+.import-paste-zone.has-content .import-paste-hint { opacity: 0; }
 .import-paste-zone .import-textarea {
   position: relative;
   width: 100%;
@@ -218,3 +184,6 @@
 </style>
 
 <script src="/js/import.js" nonce="<?= htmlspecialchars($cspNonce ?? '') ?>"></script>
+<?php
+$content = ob_get_clean();
+require __DIR__ . '/../layouts/app.php';

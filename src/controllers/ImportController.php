@@ -8,19 +8,14 @@ class ImportController
     {
         Auth::check();
         $pageTitle = 'Importer';
-        ob_start();
         require ROOT . '/views/import/index.php';
-        $content = ob_get_clean();
-        require ROOT . '/views/layouts/app.php';
     }
 
     // POST /import/photos → extraction PDF trombinoscope
-    // Formulaire HTML multipart → protection CSRF requise
     public function photos(array $p): void
     {
         Csrf::verify();
 
-        // Fichier absent à cause d'un dépassement de limite PHP
         if (empty($_FILES) && (int)$_SERVER['CONTENT_LENGTH'] > 0) {
             Response::json(['error' => 'Fichier trop volumineux (limite serveur dépassée)'], 413);
             return;
@@ -42,7 +37,6 @@ class ImportController
 
         $data = file_get_contents($_FILES['pdf']['tmp_name']);
 
-        // ── Décompresser les objets FlateDecode ──────────────────
         $objMap = [];
         preg_match_all(
             '/(\d+) 0 obj\s*<<(.*?)>>\s*stream\r?\n(.*?)endstream/s',
@@ -55,7 +49,6 @@ class ImportController
             if ($dec !== false) $objMap[$objNum] = $dec;
         }
 
-        // ── Trouver les pages ────────────────────────────────────
         $pages = [];
         preg_match_all('/(\d+) 0 obj\s*<<(.*?)>>/s', $data, $pm, PREG_SET_ORDER);
         foreach ($pm as $m) {
@@ -64,13 +57,11 @@ class ImportController
             $pages[] = (int)$c[1];
         }
 
-        // ── Smalot pour le texte ─────────────────────────────────
         require_once ROOT . '/src/parse_trombi_pdf/autoload.php';
         $parser   = new \Smalot\PdfParser\Parser();
         $pdf      = $parser->parseFile($_FILES['pdf']['tmp_name']);
         $pdfPages = $pdf->getPages();
 
-        // ── Extraire les JPEG ────────────────────────────────────
         $images = [];
         $pos    = 0;
         while (true) {
@@ -82,7 +73,6 @@ class ImportController
             $pos = $end + 2;
         }
 
-        // ── Associer pages ↔ images ──────────────────────────────
         $eleves   = [];
         $unknown  = [];
         $imgIndex = 0;
@@ -122,7 +112,6 @@ class ImportController
             $eleves[] = compact('classe', 'nom', 'prenom', 'imageData');
         }
 
-        // ── Sauvegarder ──────────────────────────────────────────
         $extracted = 0;
 
         foreach ($eleves as $e) {

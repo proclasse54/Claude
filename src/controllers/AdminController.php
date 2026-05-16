@@ -1,14 +1,5 @@
 <?php
 // src/controllers/AdminController.php
-// ============================================================
-//  Routes admin — réservé au rôle 'admin'
-//  GET  /admin/users
-//  POST /admin/users          → créer un compte
-//  POST /admin/users/{id}     → modifier un compte
-//  DELETE /admin/users/{id}   → supprimer (JSON)
-//  GET  /admin/logs
-//  POST /admin/logs/purge     → purger les logs
-// ============================================================
 class AdminController
 {
     // ── GET /admin/users ──────────────────────────────────────
@@ -23,10 +14,7 @@ class AdminController
         unset($_SESSION['flash']);
 
         $pageTitle = 'Utilisateurs';
-        ob_start();
         require ROOT . '/views/admin/users.php';
-        $content = ob_get_clean();
-        require ROOT . '/views/layouts/app.php';
     }
 
     // ── POST /admin/users — créer un compte ───────────────────
@@ -108,7 +96,6 @@ class AdminController
     }
 
     // ── DELETE /admin/users/{id} — supprimer (JSON) ───────────
-    // Requête fetch() DELETE depuis le JS → protégée par CORS, pas de CSRF HTML
     public function userDelete(array $params): void
     {
         Auth::requireAdmin();
@@ -144,9 +131,9 @@ class AdminController
              . ($where ? ' WHERE ' . implode(' AND ', $where) : '')
              . ' ORDER BY l.created_at DESC LIMIT ' . $limit;
 
-        $logs       = $pdo->prepare($sql);
+        $logs = $pdo->prepare($sql);
         $logs->execute($binds);
-        $logs       = $logs->fetchAll(PDO::FETCH_ASSOC);
+        $logs = $logs->fetchAll(PDO::FETCH_ASSOC);
 
         $levels     = $pdo->query("SELECT DISTINCT level    FROM app_logs ORDER BY level")->fetchAll(PDO::FETCH_COLUMN);
         $categories = $pdo->query("SELECT DISTINCT category FROM app_logs ORDER BY category")->fetchAll(PDO::FETCH_COLUMN);
@@ -155,10 +142,7 @@ class AdminController
         unset($_SESSION['flash']);
 
         $pageTitle = 'Logs';
-        ob_start();
         require ROOT . '/views/admin/logs.php';
-        $content = ob_get_clean();
-        require ROOT . '/views/layouts/app.php';
     }
 
     // ── POST /admin/logs/purge ────────────────────────────────

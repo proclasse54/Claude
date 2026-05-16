@@ -1,8 +1,8 @@
 <?php
 // views/admin/logs.php
-// $logs, $levels, $categories, $flash et $cspNonce injectés par AdminController::logs()
-// Tous les onclick inline ont été remplacés par data-action pour respecter la CSP (script-src-attr)
+// $logs, $levels, $categories, $flash, $cspNonce injectés par AdminController::logs()
 ?>
+<?php ob_start(); ?>
 <div class="page-header">
   <div>
     <h1>Logs applicatifs
@@ -21,7 +21,7 @@
   </div>
 <?php endif ?>
 
-<!-- Filtres (GET — pas de CSRF nécessaire) -->
+<!-- Filtres -->
 <form method="GET" action="/admin/logs" style="display:flex;gap:var(--space-3);margin-bottom:var(--space-5);align-items:center;flex-wrap:wrap">
   <select name="level" style="font-size:var(--text-sm);padding:var(--space-2) var(--space-3);border-radius:var(--radius-md);border:1px solid var(--border);background:var(--color-surface)">
     <option value="">Tous niveaux</option>
@@ -46,7 +46,6 @@
   <?php endif ?>
 </form>
 
-<!-- Table -->
 <div class="card" style="overflow:auto">
   <table class="data-table" style="font-size:var(--text-xs)">
     <thead>
@@ -120,3 +119,6 @@
 </div>
 
 <script src="/js/admin-logs.js" nonce="<?= htmlspecialchars($cspNonce ?? '') ?>"></script>
+<?php
+$content = ob_get_clean();
+require __DIR__ . '/../layouts/app.php';

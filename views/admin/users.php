@@ -1,8 +1,8 @@
 <?php
-// views/admin/users.php — inclus par AdminController::users() via ob_start()
-// $users et $flash sont injectés par le contrôleur
-// Tous les onclick inline ont été remplacés par data-action pour respecter la CSP (script-src-attr)
+// views/admin/users.php
+// $users, $flash, $cspNonce injectés par AdminController::users()
 ?>
+<?php ob_start(); ?>
 <div class="page-header">
   <div>
     <h1>Utilisateurs
@@ -16,12 +16,11 @@
 </div>
 
 <?php if ($flash): ?>
-  <div class="alert alert-<?= $flash['type'] === 'success' ? 'success' : 'error' ?>" style="margin-bottom:var(--space-5); padding:var(--space-3) var(--space-4); border-radius:var(--radius-md); font-size:var(--text-sm); background:<?= $flash['type'] === 'success' ? 'var(--primary-light)' : 'var(--danger-light)' ?>; color:<?= $flash['type'] === 'success' ? 'var(--primary)' : 'var(--danger)' ?>">
-    <?= $flash['msg'] ?>
+  <div class="alert alert-<?= $flash['type'] === 'success' ? 'success' : 'error' ?>" style="margin-bottom:var(--space-5);padding:var(--space-3) var(--space-4);border-radius:var(--radius-md);font-size:var(--text-sm);background:<?= $flash['type'] === 'success' ? 'var(--primary-light)' : 'var(--danger-light)' ?>;color:<?= $flash['type'] === 'success' ? 'var(--primary)' : 'var(--danger)' ?>">
+    <?= htmlspecialchars($flash['msg']) ?>
   </div>
 <?php endif ?>
 
-<!-- Tableau des utilisateurs -->
 <div class="card" style="overflow:hidden">
   <table class="data-table">
     <thead>
@@ -49,9 +48,7 @@
             <span style="color:var(--text-muted);font-size:var(--text-xs)">○ Inactif</span>
           <?php endif ?>
         </td>
-        <td style="color:var(--text-muted);font-size:var(--text-xs)">
-          <?= date('d/m/Y', strtotime($u['created_at'])) ?>
-        </td>
+        <td style="color:var(--text-muted);font-size:var(--text-xs)"><?= date('d/m/Y', strtotime($u['created_at'])) ?></td>
         <td style="text-align:right">
           <div style="display:flex;gap:var(--space-2);justify-content:flex-end">
             <button class="btn btn-ghost btn-sm"
@@ -59,7 +56,7 @@
               data-user="<?= htmlspecialchars(json_encode($u), ENT_QUOTES) ?>">
               Modifier
             </button>
-            <?php if ($u['id'] !== Auth::user()): ?>
+            <?php if ($u['id'] !== Auth::user()['id']): ?>
             <button class="btn btn-danger btn-sm"
               data-action="delete-user"
               data-id="<?= $u['id'] ?>"
@@ -75,7 +72,7 @@
   </table>
 </div>
 
-<!-- ── Modal : créer un compte ──────────────────────────────── -->
+<!-- Modal créer -->
 <div id="modalCreate" class="modal-overlay" hidden>
   <div class="modal">
     <div class="modal-header">
@@ -107,7 +104,7 @@
   </div>
 </div>
 
-<!-- ── Modal : modifier un compte ───────────────────────────── -->
+<!-- Modal modifier -->
 <div id="modalEdit" class="modal-overlay" hidden>
   <div class="modal">
     <div class="modal-header">
@@ -147,3 +144,6 @@
 </div>
 
 <script src="/js/admin-users.js" nonce="<?= htmlspecialchars($cspNonce ?? '') ?>"></script>
+<?php
+$content = ob_get_clean();
+require __DIR__ . '/../layouts/app.php';
