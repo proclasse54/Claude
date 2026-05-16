@@ -2,7 +2,7 @@
 // editor.php — contenu uniquement (wrappé par create.php ou edit.php)
 $isNew = !($room['id'] ?? null);
 
-// Construire la map des sièges actifs
+// Construire la map des sièges actifs : "row_col" => true
 $activeSeats = [];
 foreach (($room['seats'] ?? []) as $s) {
     $activeSeats[$s['row_index'] . '_' . $s['col_index']] = true;
@@ -11,9 +11,10 @@ foreach (($room['seats'] ?? []) as $s) {
 <div class="page-header">
   <div>
     <a href="/rooms" class="btn btn-ghost btn-sm">← Retour</a>
-    <h1><?= $isNew ? 'Nouvelle salle' : 'Modifier : ' . htmlspecialchars($room['name']) ?></h1>
+    <h1><?= $isNew ? 'Nouvelle salle' : 'Modifier : ' . htmlspecialchars($room['name']) ?></h1>
   </div>
-  <button class="btn btn-primary" onclick="saveRoom()">Enregistrer</button>
+  <!-- id="btnSaveRoom" : onclick= supprimé, géré par event listener dans rooms-editor.js -->
+  <button class="btn btn-primary" id="btnSaveRoom">Enregistrer</button>
 </div>
 
 <div class="editor-layout">
@@ -26,11 +27,13 @@ foreach (($room['seats'] ?? []) as $s) {
     <div class="form-row">
       <div class="form-group">
         <label>Rangées</label>
-        <input type="number" id="roomRows" value="<?= (int)($room['rows'] ?? 5) ?>" min="1" max="15" onchange="rebuildGrid()">
+        <!-- onchange= supprimé, géré par event listener dans rooms-editor.js -->
+        <input type="number" id="roomRows" value="<?= (int)($room['rows'] ?? 5) ?>" min="1" max="15">
       </div>
       <div class="form-group">
         <label>Colonnes</label>
-        <input type="number" id="roomCols" value="<?= (int)($room['cols'] ?? 6) ?>" min="1" max="12" onchange="rebuildGrid()">
+        <!-- onchange= supprimé, géré par event listener dans rooms-editor.js -->
+        <input type="number" id="roomCols" value="<?= (int)($room['cols'] ?? 6) ?>" min="1" max="12">
       </div>
     </div>
     <p class="form-hint">Cliquez sur une place pour l'activer ou la désactiver.<br>Les places grises sont inactives (allée, bureau…).</p>
@@ -52,4 +55,6 @@ foreach (($room['seats'] ?? []) as $s) {
      data-active-seats="<?= htmlspecialchars(json_encode($activeSeats), ENT_QUOTES) ?>">
 </div>
 
-<script src="/js/rooms-editor.js" nonce="<?= htmlspecialchars($cspNonce ?? '') ?>" defer></script>
+<!-- Script sans defer : injecté en bas de $content (lui-même en bas de <body>),
+     le DOM est déjà prêt à ce point — pas besoin de DOMContentLoaded ni de defer. -->
+<script src="/js/rooms-editor.js" nonce="<?= htmlspecialchars($cspNonce ?? '') ?>"></script>
