@@ -2,6 +2,11 @@
 // views/rooms/index.php
 // $rooms injecté par RoomController::index()
 ?>
+
+<?php
+ob_start();
+?>
+
 <div class="page-header">
   <div>
     <h1>Salles</h1>
@@ -47,3 +52,6 @@
      Script sans defer : injecté en bas de $content (lui-même en bas de <body>),
      le DOM est déjà prêt à ce point — pas besoin de DOMContentLoaded ni de defer. -->
 <script src="/js/rooms.js" nonce="<?= htmlspecialchars($cspNonce ?? '') ?>"></script>
+<?php
+$content = ob_get_clean();
+require __DIR__ . '/../layouts/app.php';
