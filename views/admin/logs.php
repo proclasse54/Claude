@@ -1,6 +1,7 @@
 <?php
 // views/admin/logs.php
-// $logs, $levels, $categories, $flash injectés par AdminController::logs()
+// $logs, $levels, $categories, $flash et $cspNonce injectés par AdminController::logs()
+// Tous les onclick inline ont été remplacés par data-action pour respecter la CSP (script-src-attr)
 ?>
 <div class="page-header">
   <div>
@@ -8,7 +9,7 @@
       <small><?= count($logs) ?> entrée<?= count($logs) > 1 ? 's' : '' ?></small>
     </h1>
   </div>
-  <button class="btn btn-danger btn-sm" onclick="document.getElementById('modalPurge').removeAttribute('hidden')">
+  <button class="btn btn-danger btn-sm" data-action="open-purge">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
     Purger
   </button>
@@ -97,7 +98,7 @@
   <div class="modal">
     <div class="modal-header">
       <h2>Purger les logs</h2>
-      <button class="modal-close" onclick="this.closest('.modal-overlay').setAttribute('hidden','')">&times;</button>
+      <button class="modal-close" data-action="close-modal">&times;</button>
     </div>
     <form method="POST" action="/admin/logs/purge">
       <div class="form-group">
@@ -110,11 +111,11 @@
         </select>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-ghost" onclick="this.closest('.modal-overlay').setAttribute('hidden','')">Annuler</button>
+        <button type="button" class="btn btn-ghost" data-action="close-modal">Annuler</button>
         <button type="submit" class="btn btn-danger">Purger</button>
       </div>
     </form>
   </div>
 </div>
 
-<script src="/js/admin-logs.js" defer></script>
+<script src="/js/admin-logs.js" nonce="<?= htmlspecialchars($cspNonce ?? '') ?>"></script>
