@@ -12,16 +12,18 @@
   </div>
 </div>
 
+<!-- data-tab sur chaque bouton — showTab() est appelé via délégation dans classes-show.js -->
 <div class="tabs">
-  <button class="tab active" onclick="showTab('students', this)">Élèves (<?= count($students) ?>)</button>
-  <button class="tab" onclick="showTab('plans', this)">Plans de salle (<?= count($plans) ?>)</button>
-  <button class="tab" onclick="showTab('groups', this)">Groupes (<?= count($groups) ?>)</button>
+  <button class="tab active" data-tab="students">Élèves (<?= count($students) ?>)</button>
+  <button class="tab" data-tab="plans">Plans de salle (<?= count($plans) ?>)</button>
+  <button class="tab" data-tab="groups">Groupes (<?= count($groups) ?>)</button>
 </div>
 
-<!-- ── Onglet Élèves ─────────────────────────────────────── -->
+<!-- ── Onglet Élèves ───────────────────────────────────────────────── -->
 <div id="tab-students" class="tab-content">
   <div class="tab-actions">
-    <button class="btn btn-primary btn-sm" onclick="openImportModal()">
+    <!-- id="btnOpenImport" : géré par event listener dans classes-show.js -->
+    <button class="btn btn-primary btn-sm" id="btnOpenImport">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
       Importer depuis Pronote
     </button>
@@ -59,10 +61,11 @@
   <?php endif; ?>
 </div>
 
-<!-- ── Onglet Plans ──────────────────────────────────────── -->
+<!-- ── Onglet Plans ─────────────────────────────────────────────────── -->
 <div id="tab-plans" class="tab-content" hidden>
   <div class="tab-actions">
-    <button class="btn btn-primary btn-sm" onclick="openNewPlanModal()">+ Nouveau plan</button>
+    <!-- id="btnOpenNewPlan" : géré par event listener dans classes-show.js -->
+    <button class="btn btn-primary btn-sm" id="btnOpenNewPlan">+ Nouveau plan</button>
   </div>
   <?php if (empty($plans)): ?>
   <div class="empty-state"><p>Aucun plan de salle. Créez-en un pour placer les élèves.</p></div>
@@ -76,7 +79,8 @@
       </div>
       <div class="card-footer">
         <a href="/plans/<?= $pl['id'] ?>/edit" class="btn btn-sm btn-primary">Placer élèves</a>
-        <button class="btn btn-sm btn-danger" onclick="deletePlan(<?= $pl['id'] ?>)">Supprimer</button>
+        <!-- data-plan-id : géré par délégation dans classes-show.js -->
+        <button class="btn btn-sm btn-danger btn-delete-plan" data-plan-id="<?= $pl['id'] ?>">Supprimer</button>
       </div>
     </div>
     <?php endforeach; ?>
@@ -84,7 +88,7 @@
   <?php endif; ?>
 </div>
 
-<!-- ── Onglet Groupes ────────────────────────────────── -->
+<!-- ── Onglet Groupes ───────────────────────────────────────────────── -->
 <div id="tab-groups" class="tab-content" hidden>
   <?php if (empty($groups)): ?>
   <div class="empty-state">
@@ -111,12 +115,13 @@
   <?php endif; ?>
 </div>
 
-<!-- ── Modal import Pronote (coller) ────────────────────── -->
+<!-- ── Modal import Pronote (coller) ────────────────────────────── -->
 <div class="modal-overlay" id="importModal" hidden>
   <div class="modal modal-lg">
     <div class="modal-header">
       <h2>Importer depuis Pronote</h2>
-      <button class="modal-close" onclick="closeModal('importModal')">&times;</button>
+      <!-- data-close-modal géré par délégation dans classes-show.js -->
+      <button class="modal-close" data-close-modal="importModal">&times;</button>
     </div>
 
     <div class="import-instructions">
@@ -130,9 +135,9 @@
 
     <div class="form-group">
       <label>Données copiées depuis Pronote</label>
+      <!-- oninput géré par event listener dans classes-show.js -->
       <textarea id="pronoteData" rows="10"
-        placeholder="Collez ici les données copiées depuis Pronote (Ctrl+V)..."
-        oninput="previewImport(this.value)"></textarea>
+        placeholder="Collez ici les données copiées depuis Pronote (Ctrl+V)..."></textarea>
     </div>
 
     <div id="importPreview" class="import-preview" hidden>
@@ -140,20 +145,22 @@
     </div>
 
     <div class="modal-footer">
-      <button type="button" class="btn btn-ghost" onclick="closeModal('importModal')">Annuler</button>
-      <button type="button" class="btn btn-primary" id="importBtn" onclick="doImport()" disabled>Importer</button>
+      <button type="button" class="btn btn-ghost" data-close-modal="importModal">Annuler</button>
+      <button type="button" class="btn btn-primary" id="importBtn" disabled>Importer</button>
     </div>
   </div>
 </div>
 
-<!-- ── Modal nouveau plan ─────────────────────────────── -->
+<!-- ── Modal nouveau plan ─────────────────────────────────────────────── -->
 <div class="modal-overlay" id="newPlanModal" hidden>
   <div class="modal">
     <div class="modal-header">
       <h2>Nouveau plan de salle</h2>
-      <button class="modal-close" onclick="closeModal('newPlanModal')">&times;</button>
+      <!-- data-close-modal géré par délégation dans classes-show.js -->
+      <button class="modal-close" data-close-modal="newPlanModal">&times;</button>
     </div>
-      <form onsubmit="createPlan(event)">
+      <!-- onsubmit géré par event listener dans classes-show.js -->
+      <form id="newPlanForm">
         <div class="form-group">
           <label>Salle</label>
           <select name="room_id" required>
@@ -176,7 +183,7 @@
           <input type="text" name="name" value="Plan par défaut">
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-ghost" onclick="closeModal('newPlanModal')">Annuler</button>
+          <button type="button" class="btn btn-ghost" data-close-modal="newPlanModal">Annuler</button>
           <button type="submit" class="btn btn-primary">Créer</button>
         </div>
       </form>

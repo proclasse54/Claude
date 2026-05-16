@@ -1,12 +1,63 @@
 /* CLASS_ID est injecté via data-class-id sur #classShowData */
 const CLASS_ID = parseInt(document.getElementById('classShowData').dataset.classId);
 
+// ── Initialisation des event listeners ──────────────────────────────────────
+// Tous les handlers sont enregistrés ici (plus de onclick= inline dans le PHP)
+// afin de satisfaire la CSP script-src sans unsafe-hashes ni unsafe-inline.
+document.addEventListener('DOMContentLoaded', () => {
+
+  // Navigation par onglets — délégation sur .tabs via data-tab
+  document.querySelector('.tabs')?.addEventListener('click', e => {
+    const btn = e.target.closest('.tab[data-tab]');
+    if (btn) showTab(btn.dataset.tab, btn);
+  });
+
+  // Bouton "Importer depuis Pronote" (onglet Élèves)
+  document.getElementById('btnOpenImport')?.addEventListener('click', openImportModal);
+
+  // Bouton "+ Nouveau plan" (onglet Plans)
+  document.getElementById('btnOpenNewPlan')?.addEventListener('click', openNewPlanModal);
+
+  // Fermeture des modales via data-close-modal (délégation globale)
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('[data-close-modal]');
+    if (btn) closeModal(btn.dataset.closeModal);
+  });
+
+  // Textarea Pronote — prévisualisation en temps réel
+  document.getElementById('pronoteData')?.addEventListener('input', e => previewImport(e.target.value));
+
+  // Bouton « Importer » dans la modale Pronote
+  document.getElementById('importBtn')?.addEventListener('click', doImport);
+
+  // Formulaire nouveau plan
+  document.getElementById('newPlanForm')?.addEventListener('submit', createPlan);
+
+  // Suppression de plan — délégation sur le grid des plans
+  document.getElementById('tab-plans')?.addEventListener('click', e => {
+    const btn = e.target.closest('.btn-delete-plan');
+    if (btn) deletePlan(parseInt(btn.dataset.planId, 10));
+  });
+
+  // Restauration de l'onglet actif depuis le paramètre URL ?tab=
+  const params = new URLSearchParams(window.location.search);
+  const tabParam = params.get('tab');
+  if (tabParam) {
+    const btn = document.querySelector(`.tab[data-tab="${tabParam}"]`);
+    if (btn) showTab(tabParam, btn);
+  }
+});
+
+// ── Navigation par onglets ──────────────────────────────────────────────────────
+
 function showTab(name, btn) {
   document.querySelectorAll('.tab-content').forEach(t => t.hidden = true);
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.getElementById('tab-' + name).hidden = false;
   btn.classList.add('active');
 }
+
+// ── Modale import Pronote ─────────────────────────────────────────────────
 
 function openImportModal() {
   document.getElementById('pronoteData').value = '';
@@ -57,6 +108,8 @@ function doImport() {
   });
 }
 
+// ── Modale nouveau plan ──────────────────────────────────────────────────
+
 function openNewPlanModal() { document.getElementById('newPlanModal').classList.add('is-open'); }
 
 function createPlan(e) {
@@ -76,16 +129,21 @@ function createPlan(e) {
   });
 }
 
+// ── Suppression d'un plan ─────────────────────────────────────────────────
+
 function deletePlan(id) {
   if (!confirm('Supprimer ce plan ?')) return;
   fetch('/api/plans/' + id, { method: 'DELETE' })
     .then(r => r.json()).then(d => { if (d.ok) location.reload(); });
 }
 
-(function() {
-  const params = new URLSearchParams(window.location.search);
-  if (params.get('tab') === 'plans') {
-    const btn = document.querySelector('.tab:nth-child(2)');
-    if (btn) showTab('plans', btn);
-  }
-})();
+// ── Fermeture des modales ────────────────────────────────────────────────────
+
+/**
+ * Masque une modale par son id.
+ * Appelé depuis les boutons Annuler/× via data-close-modal (voir DOMContentLoaded).
+ */
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.setAttribute('hidden', '');
+}
