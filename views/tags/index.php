@@ -7,7 +7,8 @@
     <h1>Tags</h1>
     <p class="text-muted">Gérez les tags utilisés pendant vos séances</p>
   </div>
-  <button class="btn btn-primary" onclick="openCreateModal()">
+  <!-- id="btnOpenCreateTag" : onclick= supprimé, géré par event listener dans tags.js -->
+  <button class="btn btn-primary" id="btnOpenCreateTag">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
       <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
     </svg>
@@ -23,25 +24,32 @@
   </svg>
   <h3>Aucun tag</h3>
   <p>Créez votre premier tag pour annoter vos élèves pendant les séances.</p>
-  <button class="btn btn-primary" onclick="openCreateModal()">Créer un tag</button>
+  <!-- id="btnOpenCreateTagEmpty" : onclick= supprimé, géré par event listener dans tags.js -->
+  <button class="btn btn-primary" id="btnOpenCreateTagEmpty">Créer un tag</button>
 </div>
 <?php else: ?>
-<div class="cards-grid">
+<div class="cards-grid" id="tagsGrid">
   <?php foreach ($tags as $t): ?>
   <div class="card" style="border-left: 4px solid <?= htmlspecialchars($t['color'] ?? '#888') ?>">
     <div class="card-body">
       <div class="card-title">
         <?= htmlspecialchars($t['icon'] ?? '') ?> <?= htmlspecialchars($t['label']) ?>
       </div>
-      <div class="card-meta">Couleur : <?= htmlspecialchars($t['color'] ?? '#888') ?></div>
+      <div class="card-meta">Couleur : <?= htmlspecialchars($t['color'] ?? '#888') ?></div>
     </div>
     <div class="card-footer">
-      <button class="btn btn-sm btn-secondary"
-              onclick="openEditModal(<?= $t['id'] ?>, '<?= htmlspecialchars(addslashes($t['label'])) ?>', '<?= htmlspecialchars($t['color'] ?? '#888') ?>', '<?= htmlspecialchars(addslashes($t['icon'] ?? '')) ?>', <?= (int)$t['sort_order'] ?>)">
+      <!-- onclick= supprimés : les paramètres sont passés via data-* et lus par délégation dans tags.js -->
+      <button class="btn btn-sm btn-secondary btn-edit-tag"
+              data-id="<?= $t['id'] ?>"
+              data-label="<?= htmlspecialchars($t['label'], ENT_QUOTES) ?>"
+              data-color="<?= htmlspecialchars($t['color'] ?? '#888', ENT_QUOTES) ?>"
+              data-icon="<?= htmlspecialchars($t['icon'] ?? '', ENT_QUOTES) ?>"
+              data-order="<?= (int)$t['sort_order'] ?>">
         Modifier
       </button>
-      <button class="btn btn-sm btn-danger"
-              onclick="deleteTag(<?= $t['id'] ?>, '<?= htmlspecialchars(addslashes($t['label'])) ?>')">
+      <button class="btn btn-sm btn-danger btn-delete-tag"
+              data-id="<?= $t['id'] ?>"
+              data-label="<?= htmlspecialchars($t['label'], ENT_QUOTES) ?>">
         Supprimer
       </button>
     </div>
@@ -55,9 +63,11 @@
   <div class="modal">
     <div class="modal-header">
       <h2 id="tagModalTitle">Nouveau tag</h2>
-      <button class="modal-close" onclick="closeModal('tagModal')">&times;</button>
+      <!-- onclick= supprimé : géré par délégation data-close-modal dans tags.js -->
+      <button class="modal-close" data-close-modal="tagModal">&times;</button>
     </div>
-    <form onsubmit="saveTag(event)">
+    <!-- onsubmit= supprimé : géré par event listener dans tags.js -->
+    <form id="tagForm">
       <input type="hidden" id="tagId">
       <div class="form-group">
         <label>Label</label>
@@ -65,18 +75,18 @@
       </div>
       <div class="form-group">
         <div style="margin-bottom:var(--space-4);">
-            <label>Icône (emoji)</label>
-            <div style="display:flex;gap:.5rem;align-items:center;margin-top:.25rem;">
-                <input type="text" id="tagIcon" placeholder="😴" style="width:4rem;text-align:center;font-size:1.4rem;" readonly>
-                <button type="button" id="btnEmojiPicker" class="btn">😊 Choisir</button>
-            </div>
-            <div id="emojiPickerWrapper" style="position:relative;">
-                <emoji-picker
-                    id="emojiPicker"
-                    class="emoji-picker-hidden"
-                    data-source="/js/emoji-data.json"
-                ></emoji-picker>
-            </div>
+          <label>Icône (emoji)</label>
+          <div style="display:flex;gap:.5rem;align-items:center;margin-top:.25rem;">
+            <input type="text" id="tagIcon" placeholder="😴" style="width:4rem;text-align:center;font-size:1.4rem;" readonly>
+            <button type="button" id="btnEmojiPicker" class="btn">😊 Choisir</button>
+          </div>
+          <div id="emojiPickerWrapper" style="position:relative;">
+            <emoji-picker
+              id="emojiPicker"
+              class="emoji-picker-hidden"
+              data-source="/js/emoji-data.json"
+            ></emoji-picker>
+          </div>
         </div>
       </div>
       <div class="form-group">
@@ -88,11 +98,14 @@
         <input type="number" id="tagOrder" value="99" min="0">
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-ghost" onclick="closeModal('tagModal')">Annuler</button>
+        <!-- onclick= supprimé : géré par délégation data-close-modal dans tags.js -->
+        <button type="button" class="btn btn-ghost" data-close-modal="tagModal">Annuler</button>
         <button type="submit" class="btn btn-primary">Enregistrer</button>
       </div>
     </form>
   </div>
 </div>
 
-<script src="/js/tags.js" defer></script>
+<!-- Script sans defer : injecté en bas de $content (lui-même en bas de <body>),
+     le DOM est déjà prêt à ce point — pas besoin de DOMContentLoaded ni de defer. -->
+<script src="/js/tags.js" nonce="<?= htmlspecialchars($cspNonce ?? '') ?>"></script>
