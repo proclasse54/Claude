@@ -2,7 +2,6 @@
 // views/admin/users.php — inclus par AdminController::users() via ob_start()
 // $users et $flash sont injectés par le contrôleur
 // Tous les onclick inline ont été remplacés par data-action pour respecter la CSP (script-src-attr)
-ob_start();
 ?>
 <div class="page-header">
   <div>
@@ -146,7 +145,4 @@ ob_start();
 </div>
 
 <script src="/js/admin-users.js" nonce="<?= htmlspecialchars($cspNonce ?? '') ?>"></script>
-<?php
-$content = ob_get_clean();
-require __DIR__ . '/../layouts/app.php';
-?>
+
