@@ -629,6 +629,7 @@ kbd {
 }
 
 
+
 /* ── Agenda wrapper ───────────────────────────────────────── */
 .week-agenda {
     display: flex;
@@ -1158,3 +1159,16 @@ details[open] .modal-details-icon {
 .modal-photo-empty { font-size:var(--text-sm,.875rem); color:var(--color-text-muted,#888); }
 .modal-photo-actions { display:flex; gap:.5rem; flex-wrap:wrap; justify-content:center; }
 .form-hint { font-size:var(--text-xs,.8rem); color:var(--color-text-muted,#888); text-align:center; }
+
+
+
+
+
+/* Inter auto-hébergée — remplace l'appel Google Fonts */
+@font-face {
+    font-family: 'Inter';
+    src: url('/fonts/inter-variable.woff2') format('woff2') tech('variations');
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+}
