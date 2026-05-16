@@ -1,9 +1,27 @@
 <!DOCTYPE html>
-<html lang="fr" data-theme="light">
+<!--
+  Le data-theme est intentionnellement absent ici : il est injecté
+  par le script inline du <head> AVANT tout rendu, ce qui évite le
+  flash lumineux (FOUT) au chargement et à chaque navigation.
+-->
+<html lang="fr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?= htmlspecialchars($pageTitle ?? 'ProClasse') ?></title>
+<!--
+  Script bloquant MINIMAL exécuté avant le premier rendu du navigateur.
+  Applique immédiatement le thème sauvegardé (ou la préférence système)
+  sur <html> pour éviter tout flash de mode clair au démarrage.
+  Pas de nonce nécessaire : script inline sans chargement externe.
+-->
+<script>
+  (function(){
+    var t = localStorage.getItem('proclasse-theme')
+         || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', t);
+  })();
+</script>
 <link rel="stylesheet" href="/css/app.css">
 <script type="module" src="/js/emoji-picker.js" nonce="<?= htmlspecialchars($cspNonce ?? '') ?>"></script>
 </head>
