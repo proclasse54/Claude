@@ -1,6 +1,8 @@
 <?php
 // views/admin/users.php — inclus par AdminController::users() via ob_start()
 // $users et $flash sont injectés par le contrôleur
+// Tous les onclick inline ont été remplacés par data-action pour respecter la CSP (script-src-attr)
+ob_start();
 ?>
 <div class="page-header">
   <div>
@@ -8,7 +10,7 @@
       <small><?= count($users) ?> compte<?= count($users) > 1 ? 's' : '' ?></small>
     </h1>
   </div>
-  <button class="btn btn-primary" onclick="document.getElementById('modalCreate').removeAttribute('hidden')">
+  <button class="btn btn-primary" data-action="open-create">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     Nouveau compte
   </button>
@@ -53,11 +55,16 @@
         </td>
         <td style="text-align:right">
           <div style="display:flex;gap:var(--space-2);justify-content:flex-end">
-            <button class="btn btn-ghost btn-sm" onclick="openEdit(<?= htmlspecialchars(json_encode($u)) ?>)">
+            <button class="btn btn-ghost btn-sm"
+              data-action="open-edit"
+              data-user="<?= htmlspecialchars(json_encode($u), ENT_QUOTES) ?>">
               Modifier
             </button>
             <?php if ($u['id'] !== Auth::user()): ?>
-            <button class="btn btn-danger btn-sm" onclick="deleteUser(<?= $u['id'] ?>, '<?= htmlspecialchars($u['email']) ?>')">
+            <button class="btn btn-danger btn-sm"
+              data-action="delete-user"
+              data-id="<?= $u['id'] ?>"
+              data-email="<?= htmlspecialchars($u['email'], ENT_QUOTES) ?>">
               Supprimer
             </button>
             <?php endif ?>
@@ -74,7 +81,7 @@
   <div class="modal">
     <div class="modal-header">
       <h2>Nouveau compte</h2>
-      <button class="modal-close" onclick="this.closest('.modal-overlay').setAttribute('hidden','')">&times;</button>
+      <button class="modal-close" data-action="close-modal">&times;</button>
     </div>
     <form method="POST" action="/admin/users">
       <div class="form-group">
@@ -93,7 +100,7 @@
         <input type="password" id="c_password" name="password" required minlength="8" autocomplete="new-password" placeholder="••••••••">
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-ghost" onclick="this.closest('.modal-overlay').setAttribute('hidden','')">Annuler</button>
+        <button type="button" class="btn btn-ghost" data-action="close-modal">Annuler</button>
         <button type="submit" class="btn btn-primary">Créer</button>
       </div>
     </form>
@@ -105,7 +112,7 @@
   <div class="modal">
     <div class="modal-header">
       <h2>Modifier le compte</h2>
-      <button class="modal-close" onclick="this.closest('.modal-overlay').setAttribute('hidden','')">&times;</button>
+      <button class="modal-close" data-action="close-modal">&times;</button>
     </div>
     <form id="formEdit" method="POST" action="">
       <div class="form-group">
@@ -131,11 +138,15 @@
         <input type="password" id="e_password" name="password" minlength="8" autocomplete="new-password" placeholder="••••••••">
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-ghost" onclick="this.closest('.modal-overlay').setAttribute('hidden','')">Annuler</button>
+        <button type="button" class="btn btn-ghost" data-action="close-modal">Annuler</button>
         <button type="submit" class="btn btn-primary">Enregistrer</button>
       </div>
     </form>
   </div>
 </div>
 
-<script src="/js/admin-users.js" defer></script>
+<script src="/js/admin-users.js" nonce="<?= htmlspecialchars($cspNonce ?? '') ?>"></script>
+<?php
+$content = ob_get_clean();
+require __DIR__ . '/../layouts/app.php';
+?>
