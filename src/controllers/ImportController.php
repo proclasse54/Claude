@@ -6,7 +6,7 @@ class ImportController
     // GET /import  → affiche la page unifiée
     public function index(array $p): void
     {
-        Auth::requireLogin();
+        Auth::check();
         $pageTitle = 'Importer';
         ob_start();
         require ROOT . '/views/import/index.php';
