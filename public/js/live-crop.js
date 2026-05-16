@@ -536,11 +536,10 @@ document.querySelectorAll('.student-modal-tab').forEach(btn => {
 modalRemoveBtn.addEventListener('click', () => {
   if (!_openStudentId) return;
 
-  apiFetch(`/api/sessions/${SESSION_ID}/remove-student`, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ student_id: _openStudentId }),
+  apiFetch(`/api/sessions/${SESSION_ID}/remove-student/${_openStudentId}`, {
+    method: 'DELETE',
   })
+
   .then(d => {
     if (!d.ok) throw new Error(d.error || 'Erreur');
 
