@@ -1,25 +1,40 @@
 <!DOCTYPE html>
 <!--
-  Le data-theme est intentionnellement absent ici : il est injecté
-  par le script inline du <head> AVANT tout rendu, ce qui évite le
-  flash lumineux (FOUT) au chargement et à chaque navigation.
+  data-theme="light" est le fallback HTML sûr.
+  Le script inline du <head> l'override vers "dark" si besoin,
+  AVANT le premier rendu — élimine tout flash dans les deux sens.
 -->
-<html lang="fr">
+<html lang="fr" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?= htmlspecialchars($pageTitle ?? 'ProClasse') ?></title>
 <!--
-  Script bloquant MINIMAL exécuté avant le premier rendu du navigateur.
-  Applique immédiatement le thème sauvegardé (ou la préférence système)
-  sur <html> pour éviter tout flash de mode clair au démarrage.
-  Pas de nonce nécessaire : script inline sans chargement externe.
+  Script bloquant MINIMAL avec nonce CSP.
+  S'exécute avant le premier rendu du navigateur :
+  1. Lit le thème persisté dans localStorage (ou préférence système).
+  2. Applique data-theme="dark" sur <html> si nécessaire.
+  3. Gele toutes les transitions CSS pendant l'init pour éviter
+     toute animation parasite au chargement ou à la navigation.
 -->
-<script>
+<script nonce="<?= htmlspecialchars($cspNonce ?? '') ?>">
   (function(){
-    var t = localStorage.getItem('proclasse-theme')
-         || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-    document.documentElement.setAttribute('data-theme', t);
+    var saved = localStorage.getItem('proclasse-theme');
+    var theme = saved || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    /* Override seulement si dark — sinon "light" est déjà correct dans le HTML */
+    if (theme === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+    /* Geler les transitions pendant l'init pour éviter tout flash ou animation parasite */
+    var s = document.createElement('style');
+    s.id  = '__theme-init';
+    s.textContent = '*, *::before, *::after { transition: none !important; }';
+    document.head.appendChild(s);
+    /* Retirer le gel dès que le DOM est prêt */
+    document.addEventListener('DOMContentLoaded', function() {
+      var el = document.getElementById('__theme-init');
+      if (el) el.remove();
+    });
   })();
 </script>
 <link rel="stylesheet" href="/css/app.css">
